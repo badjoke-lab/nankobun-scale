@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './styles.css'
+import { registerServiceWorker } from './pwa'
 
 const strings = {
   ja: {
@@ -31,9 +32,12 @@ function App() {
   const [locale, setLocale] = React.useState<Locale>(detectLocale)
   const t = strings[locale]
 
+  React.useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
+
   const switchLocale = (next: Locale) => {
     localStorage.setItem('nankobun.locale', next)
-    document.documentElement.lang = next
     setLocale(next)
   }
 
@@ -67,6 +71,8 @@ function App() {
     </main>
   )
 }
+
+registerServiceWorker()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
