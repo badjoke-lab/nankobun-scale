@@ -31,7 +31,7 @@ Implementation can build the agreed user flow without redesigning it during unre
 
 ## Gate 2 — App foundation
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - React + TypeScript + Vite application shell
@@ -47,7 +47,7 @@ The app shell loads reliably and the core screens can be reached with language s
 
 ## Gate 3 — Photographed-unit creation
 
-Status: **Not started**
+Status: **In progress**
 
 Scope:
 - photograph what to measure with
