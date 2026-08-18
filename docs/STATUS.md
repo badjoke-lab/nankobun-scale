@@ -4,40 +4,43 @@ Last updated: 2026-08-19
 
 ## Current position
 
-Current gate: **Gate 3 — Photographed-unit creation**
+Current gate: **Gate 4 — Length measurement**
 
 Current branch: `main`
 
 Current work:
-- photograph what to measure with
-- manual usable-region selection
-- confirmation of selected region
-- optional naming
-- explicit use-now / save-for-later branch
-- saved-unit reuse and editing
+- target photography
+- two-point endpoint selection
+- photographed-unit move / uniform scale / rotation
+- repeated placement with **「並べる」**
+- live recalculation
+- fractional final-unit clipping
+- measurement confirmation lock
 
 ## Completed
 
 - Gate 0 — Specification freeze
 - Gate 1 — UI specification
 - Gate 2 — App foundation
+- Gate 3 — Photographed-unit creation
 
 Gate 2 merged through PR #1 after CI build passed on the exact PR head.
+Gate 3 merged through PR #2 after CI build passed on the exact PR head and after a public-spec audit removed internal gate wording from the UI and restored explicit **「これで測る」** behavior.
 
 ## In progress
 
-- Gate 3 — Photographed-unit creation
+- Gate 4 — Length measurement
 
-Gate 3 must preserve these already-established behaviors:
-- the user manually chooses the usable photographed region
-- automatic object naming is not required
-- naming is optional
-- saving does not force immediate measurement
-- saved units are reused through an explicit **「これで測る」** action
+Gate 4 must preserve these already-established behaviors:
+- the user explicitly chooses the two length endpoints
+- the photographed unit may be moved, uniformly scaled, and rotated before confirmation
+- **「並べる」** repeats identical units along the selected line
+- a fractional final unit is clipped at the endpoint and never shrunk
+- **「この測定で決定」** locks measurement-changing conditions
 
 ## Next
 
-After Gate 3 passes its exit conditions, proceed to Gate 4 — length measurement.
+After Gate 4 passes its exit conditions, proceed to Gate 5 — area measurement.
 
 ## Reference rule
 
