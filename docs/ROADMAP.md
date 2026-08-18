@@ -47,7 +47,7 @@ The app shell loads reliably and the core screens can be reached with language s
 
 ## Gate 3 — Photographed-unit creation
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - photograph what to measure with
@@ -63,7 +63,7 @@ A user can create a photographed unit, save it without being forced into measure
 
 ## Gate 4 — Length measurement
 
-Status: **Not started**
+Status: **In progress**
 
 Scope:
 - target photography
