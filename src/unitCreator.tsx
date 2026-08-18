@@ -14,26 +14,16 @@ type Props = {
 
 const copy = {
   ja: {
-    capture: '測る基準にしたいものを撮ってください',
-    choose: '使いたい部分を囲んでください',
-    chooseHelp: '画像の上を順番にタップして、使いたい部分を囲みます。',
-    undo: '1点戻す', reset: 'やり直す', next: '確認する',
-    confirm: 'この部分を使いますか？', use: '使う', reselect: '選び直す',
-    whatNext: 'この画像をどうしますか？', measure: 'これで測る', save: '保存する',
-    name: '名前をつける（任意）', optional: '空欄のままでも保存できます',
-    saved: '保存しました', home: 'ホームへ', invalid: '3点以上で囲んでください',
-    failed: '保存できませんでした。もう一度お試しください。',
+    capture: '測る基準にしたいものを撮ってください', choose: '使いたい部分を囲んでください', chooseHelp: '画像の上を順番にタップして、使いたい部分を囲みます。',
+    undo: '1点戻す', reset: 'やり直す', next: '確認する', confirm: 'この部分を使いますか？', use: '使う', reselect: '選び直す',
+    whatNext: 'この画像をどうしますか？', measure: 'これで測る', save: '保存する', name: '名前をつける（任意）', optional: '空欄のままでも保存できます',
+    saved: '保存しました', home: 'ホームへ', invalid: '3点以上で囲んでください', failed: '保存できませんでした。もう一度お試しください。',
   },
   en: {
-    capture: 'Take a photo of what you want to measure with',
-    choose: 'Outline the part you want to use',
-    chooseHelp: 'Tap around the part you want to use.',
-    undo: 'Undo point', reset: 'Start over', next: 'Review',
-    confirm: 'Use this part?', use: 'Use', reselect: 'Choose again',
-    whatNext: 'What would you like to do with this image?', measure: 'Measure with this', save: 'Save',
-    name: 'Add a name (optional)', optional: 'You can save it without a name',
-    saved: 'Saved', home: 'Home', invalid: 'Use at least 3 points to outline the part',
-    failed: 'Couldn’t save. Please try again.',
+    capture: 'Take a photo of what you want to measure with', choose: 'Outline the part you want to use', chooseHelp: 'Tap around the part you want to use.',
+    undo: 'Undo point', reset: 'Start over', next: 'Review', confirm: 'Use this part?', use: 'Use', reselect: 'Choose again',
+    whatNext: 'What would you like to do with this image?', measure: 'Measure with this', save: 'Save', name: 'Add a name (optional)', optional: 'You can save it without a name',
+    saved: 'Saved', home: 'Home', invalid: 'Use at least 3 points to outline the part', failed: 'Couldn’t save. Please try again.',
   },
 } as const
 
@@ -52,7 +42,6 @@ async function makeMaskedImage(source: string, polygon: Point[]): Promise<string
   canvas.width = image.naturalWidth
   canvas.height = image.naturalHeight
   const ctx = canvas.getContext('2d')!
-  ctx.save()
   ctx.beginPath()
   polygon.forEach((point, index) => {
     const x = point.x * canvas.width
@@ -63,7 +52,6 @@ async function makeMaskedImage(source: string, polygon: Point[]): Promise<string
   ctx.closePath()
   ctx.clip()
   ctx.drawImage(image, 0, 0)
-  ctx.restore()
   return canvas.toDataURL('image/png')
 }
 
@@ -75,16 +63,13 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
   const [step, setStep] = React.useState<'capture'|'select'|'confirm'|'branch'|'save'|'saved'>('capture')
   const [name, setName] = React.useState('')
   const [message, setMessage] = React.useState('')
+  const [savedUnit, setSavedUnit] = React.useState<SavedUnit | null>(null)
 
   const chooseFile = (file?: File) => {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      setSource(String(reader.result))
-      setPolygon([])
-      setMasked(null)
-      setMessage('')
-      setStep('select')
+      setSource(String(reader.result)); setPolygon([]); setMasked(null); setSavedUnit(null); setMessage(''); setStep('select')
     }
     reader.readAsDataURL(file)
   }
@@ -92,50 +77,37 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
   const addPoint = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!source) return
     const rect = event.currentTarget.getBoundingClientRect()
-    const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
-    const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
-    setPolygon((points) => [...points, { x, y }])
+    setPolygon((points) => [...points, {
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+    }])
     setMessage('')
   }
 
   const review = async () => {
-    if (!source || polygon.length < 3) {
-      setMessage(t.invalid)
-      return
-    }
+    if (!source || polygon.length < 3) { setMessage(t.invalid); return }
     setMasked(await makeMaskedImage(source, polygon))
     setStep('confirm')
   }
 
-  const currentUnit = (): SavedUnit => ({
-    id: crypto.randomUUID(),
-    name: name.trim() || undefined,
-    imageDataUrl: masked!,
-    sourceImageDataUrl: source || undefined,
-    polygon,
-    createdAt: new Date().toISOString(),
+  const makeUnit = (): SavedUnit => ({
+    id: crypto.randomUUID(), name: name.trim() || undefined, imageDataUrl: masked!, sourceImageDataUrl: source || undefined, polygon, createdAt: new Date().toISOString(),
   })
 
   const save = async () => {
     try {
-      await saveUnit(currentUnit())
-      onSaved()
+      const unit = makeUnit()
+      await saveUnit(unit)
+      setSavedUnit(unit)
+      await onSaved()
       setStep('saved')
-    } catch {
-      setMessage(t.failed)
-    }
+    } catch { setMessage(t.failed) }
   }
 
-  if (step === 'capture') {
-    return <main className="camera-screen">
-      <button className="ghost-button top-left" onClick={onClose}>←</button>
-      <div className="camera-copy">{t.capture}</div>
-      <label className="shutter-file">
-        <input type="file" accept="image/*" capture="environment" onChange={(e) => chooseFile(e.target.files?.[0])} />
-        <span className="shutter" aria-label={t.capture} />
-      </label>
-    </main>
-  }
+  if (step === 'capture') return <main className="camera-screen">
+    <button className="ghost-button top-left" onClick={onClose}>←</button><div className="camera-copy">{t.capture}</div>
+    <label className="shutter-file"><input type="file" accept="image/*" capture="environment" onChange={(e) => chooseFile(e.target.files?.[0])} /><span className="shutter" aria-label={t.capture} /></label>
+  </main>
 
   if (step === 'select' && source) {
     const points = polygon.map((p) => `${p.x * 100},${p.y * 100}`).join(' ')
@@ -156,27 +128,22 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
 
   if (step === 'confirm' && masked) return <main className="editor-screen center-content">
     <h2>{t.confirm}</h2><div className="cutout-preview checker"><img src={masked} alt="" /></div>
-    <button className="primary-button" onClick={() => setStep('branch')}>{t.use}</button>
-    <button className="text-button" onClick={() => setStep('select')}>{t.reselect}</button>
+    <button className="primary-button" onClick={() => setStep('branch')}>{t.use}</button><button className="text-button" onClick={() => setStep('select')}>{t.reselect}</button>
   </main>
 
   if (step === 'branch' && masked) return <main className="editor-screen center-content">
     <h2>{t.whatNext}</h2><div className="cutout-preview checker"><img src={masked} alt="" /></div>
-    <button className="primary-button" onClick={() => onReadyToMeasure(currentUnit())}>{t.measure}</button>
-    <button className="secondary-button" onClick={() => setStep('save')}>{t.save}</button>
+    <button className="primary-button" onClick={() => onReadyToMeasure(makeUnit())}>{t.measure}</button><button className="secondary-button" onClick={() => setStep('save')}>{t.save}</button>
   </main>
 
   if (step === 'save' && masked) return <main className="editor-screen center-content">
     <div className="cutout-preview checker"><img src={masked} alt="" /></div>
-    <label className="field-label">{t.name}<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-    <p className="muted">{t.optional}</p>{message && <p className="error-copy">{message}</p>}
-    <button className="primary-button" onClick={save}>{t.save}</button>
-    <button className="text-button" onClick={() => setStep('branch')}>←</button>
+    <label className="field-label">{t.name}<input value={name} onChange={(e) => setName(e.target.value)} /></label><p className="muted">{t.optional}</p>
+    {message && <p className="error-copy">{message}</p>}<button className="primary-button" onClick={save}>{t.save}</button><button className="text-button" onClick={() => setStep('branch')}>←</button>
   </main>
 
   return <main className="editor-screen center-content">
     <h2>{t.saved}</h2><div className="cutout-preview checker"><img src={masked!} alt="" /></div>
-    <button className="primary-button" onClick={() => onReadyToMeasure(currentUnit())}>{t.measure}</button>
-    <button className="secondary-button" onClick={onClose}>{t.home}</button>
+    <button className="primary-button" onClick={() => savedUnit && onReadyToMeasure(savedUnit)}>{t.measure}</button><button className="secondary-button" onClick={onClose}>{t.home}</button>
   </main>
 }
