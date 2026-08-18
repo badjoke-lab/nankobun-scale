@@ -4,30 +4,29 @@ Last updated: 2026-08-19
 
 ## Current position
 
-Current gate: **Gate 2 — App foundation**
+Current gate: **Gate 3 — Photographed-unit creation**
 
-Current branch: `gate-2-app-foundation`
+Current branch: `main`
 
 Current work:
-- React + TypeScript + Vite shell
-- PWA foundation
-- Japanese / English switching foundation
-- local persistence foundation
-- camera acquisition foundation
-- public specification / roadmap / status documents
+- photograph what to measure with
+- manual usable-region selection
+- confirmation of selected region
+- optional naming
+- explicit use-now / save-for-later branch
+- saved-unit reuse and editing
 
 ## Completed
 
 - Gate 0 — Specification freeze
 - Gate 1 — UI specification
+- Gate 2 — App foundation
+
+Gate 2 merged through PR #1 after CI build passed on the exact PR head.
 
 ## In progress
 
-- Gate 2 — App foundation
-
-## Next
-
-After Gate 2 passes its exit conditions, proceed to Gate 3 — photographed-unit creation.
+- Gate 3 — Photographed-unit creation
 
 Gate 3 must preserve these already-established behaviors:
 - the user manually chooses the usable photographed region
@@ -35,6 +34,10 @@ Gate 3 must preserve these already-established behaviors:
 - naming is optional
 - saving does not force immediate measurement
 - saved units are reused through an explicit **「これで測る」** action
+
+## Next
+
+After Gate 3 passes its exit conditions, proceed to Gate 4 — length measurement.
 
 ## Reference rule
 
