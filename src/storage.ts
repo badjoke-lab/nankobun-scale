@@ -1,7 +1,11 @@
+export type Point = { x: number; y: number }
+
 export type SavedUnit = {
   id: string
   name?: string
   imageDataUrl: string
+  sourceImageDataUrl?: string
+  polygon?: Point[]
   createdAt: string
 }
 
@@ -37,7 +41,7 @@ export async function listSavedUnits(): Promise<SavedUnit[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(UNIT_STORE, 'readonly')
     const request = tx.objectStore(UNIT_STORE).getAll()
-    request.onsuccess = () => resolve(request.result as SavedUnit[])
+    request.onsuccess = () => resolve((request.result as SavedUnit[]).sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
     request.onerror = () => reject(request.error)
   })
 }
