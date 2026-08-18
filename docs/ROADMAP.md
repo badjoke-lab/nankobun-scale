@@ -63,7 +63,7 @@ A user can create a photographed unit, save it without being forced into measure
 
 ## Gate 4 — Length measurement
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - target photography
@@ -79,7 +79,7 @@ Integer and fractional length results render consistently and confirmed measurem
 
 ## Gate 5 — Area measurement
 
-Status: **Not started**
+Status: **In progress**
 
 Scope:
 - freehand and polygon target areas
