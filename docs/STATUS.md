@@ -4,17 +4,17 @@ Last updated: 2026-08-19
 
 ## Current position
 
-Current gate: **Gate 4 — Length measurement**
+Current gate: **Gate 5 — Area measurement**
 
 Current branch: `main`
 
 Current work:
-- target photography
-- two-point endpoint selection
-- photographed-unit move / uniform scale / rotation
-- repeated placement with **「並べる」**
+- freehand and polygon target areas
+- photographed-unit transform and tiling origin
+- zero-spacing tiling
+- boundary clipping
+- multiple fractional boundary contributions
 - live recalculation
-- fractional final-unit clipping
 - measurement confirmation lock
 
 ## Completed
@@ -23,24 +23,28 @@ Current work:
 - Gate 1 — UI specification
 - Gate 2 — App foundation
 - Gate 3 — Photographed-unit creation
+- Gate 4 — Length measurement
 
 Gate 2 merged through PR #1 after CI build passed on the exact PR head.
 Gate 3 merged through PR #2 after CI build passed on the exact PR head and after a public-spec audit removed internal gate wording from the UI and restored explicit **「これで測る」** behavior.
+Gate 4 merged through PR #3 after CI build passed on the exact PR head. Before merge, the public-spec audit restored the explicit length/area choice after target capture and added draggable endpoints plus pre-confirmation unit movement.
 
 ## In progress
 
-- Gate 4 — Length measurement
+- Gate 5 — Area measurement
 
-Gate 4 must preserve these already-established behaviors:
-- the user explicitly chooses the two length endpoints
+Gate 5 must preserve these already-established behaviors:
+- the user explicitly defines the target area
 - the photographed unit may be moved, uniformly scaled, and rotated before confirmation
-- **「並べる」** repeats identical units along the selected line
-- a fractional final unit is clipped at the endpoint and never shrunk
+- the first positioned unit defines the tiling origin
+- measurement spacing is zero
+- portions outside the selected area are clipped
+- multiple boundary fragments contribute by their in-region effective-area ratio
 - **「この測定で決定」** locks measurement-changing conditions
 
 ## Next
 
-After Gate 4 passes its exit conditions, proceed to Gate 5 — area measurement.
+After Gate 5 passes its exit conditions, proceed to Gate 6 — results, export, and history.
 
 ## Reference rule
 
