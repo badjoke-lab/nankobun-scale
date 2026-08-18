@@ -3,23 +3,24 @@ import ReactDOM from 'react-dom/client'
 import './styles.css'
 import { registerServiceWorker } from './pwa'
 import { UnitCreator } from './unitCreator'
+import { LengthMeasurement } from './lengthMeasurement'
 import { deleteUnit, listSavedUnits, saveUnit, type SavedUnit } from './storage'
 
 const strings = {
   ja: {
     tagline: '好きなものを、ものさしに。', primary: '撮ったもので測る', reuse: 'また使う', empty: '保存したものはまだありません', standard: 'cm・inchで測る',
-    use: 'これで測る', edit: '編集', remove: '削除', back: 'ホームへ', measurePrompt: '測りたいものを撮ってください',
+    use: 'これで測る', edit: '編集', remove: '削除', back: 'ホームへ',
     name: '名前をつける・変更', save: '保存', deleteQuestion: 'この画像を削除しますか？', cancel: 'キャンセル',
   },
   en: {
     tagline: 'Measure with anything.', primary: 'Measure with a photo', reuse: 'Use again', empty: 'Nothing saved yet', standard: 'Measure in cm / inch',
-    use: 'Measure with this', edit: 'Edit', remove: 'Delete', back: 'Home', measurePrompt: 'Take a photo of what you want to measure',
+    use: 'Measure with this', edit: 'Edit', remove: 'Delete', back: 'Home',
     name: 'Add or change name', save: 'Save', deleteQuestion: 'Delete this image?', cancel: 'Cancel',
   },
 } as const
 
 type Locale = keyof typeof strings
-type Screen = 'home' | 'create' | 'unit-actions' | 'measure-start'
+type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement'
 
 function detectLocale(): Locale {
   const saved = localStorage.getItem('nankobun.locale')
@@ -49,7 +50,7 @@ function App() {
 
   const startMeasurement = (unit: SavedUnit) => {
     setActiveUnit(unit)
-    setScreen('measure-start')
+    setScreen('length-measurement')
   }
 
   const openUnitActions = (unit: SavedUnit) => {
@@ -84,12 +85,8 @@ function App() {
     </main>
   }
 
-  if (screen === 'measure-start' && activeUnit) {
-    return <main className="camera-screen measure-placeholder">
-      <button className="ghost-button top-left" onClick={() => setScreen('home')}>←</button>
-      <div className="camera-copy">{t.measurePrompt}</div>
-      <div className="active-unit-pill"><img src={activeUnit.imageDataUrl} alt="" />{activeUnit.name && <span>{activeUnit.name}</span>}</div>
-    </main>
+  if (screen === 'length-measurement' && activeUnit) {
+    return <LengthMeasurement locale={locale} unit={activeUnit} onClose={() => setScreen('home')} />
   }
 
   return <main className="app-shell">

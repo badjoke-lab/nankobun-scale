@@ -38,6 +38,7 @@ h2 { margin: 0; font-size: 1.1rem; }
 .secondary-button { border: 0; background: #202020; color: #fff; }
 .secondary-button:disabled { opacity: .45; cursor: not-allowed; }
 .text-button, .ghost-button { border: 0; background: transparent; color: inherit; }
+.danger-button { width: 100%; min-height: 48px; border: 1px solid #c83b32; color: #9f2d27; background: #fff; border-radius: 12px; }
 
 .saved-section { display: grid; gap: 12px; }
 .empty-card { border: 1px solid #e6e6e6; border-radius: 14px; min-height: 120px; display: grid; place-items: center; padding: 20px; color: #666; text-align: center; }
@@ -54,10 +55,6 @@ h2 { margin: 0; font-size: 1.1rem; }
 .top-left { position: absolute; top: 20px; left: 14px; color: #fff; font-size: 1.4rem; }
 .shutter-file input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
 .shutter { display: block; width: 74px; height: 74px; border-radius: 50%; background: #ffd21a; border: 6px solid #fff; box-shadow: 0 0 0 3px #ffd21a; }
-.measure-placeholder { justify-content: flex-end; }
-.active-unit-pill { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,.12); border-radius: 999px; }
-.active-unit-pill img { width: 44px; height: 44px; object-fit: contain; }
-.gate-note { color: #aaa; text-align: center; }
 
 .selection-stage { position: relative; width: 100%; background: #111; border-radius: 14px; overflow: hidden; touch-action: none; }
 .selection-stage img { display: block; width: 100%; height: auto; user-select: none; }
@@ -70,3 +67,15 @@ h2 { margin: 0; font-size: 1.1rem; }
 .checker { background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; }
 .field-label { display: grid; gap: 8px; font-weight: 700; }
 .field-label input { width: 100%; min-height: 48px; border: 1px solid #ccc; border-radius: 10px; padding: 0 12px; }
+
+.length-screen { gap: 18px; }
+.length-stage { position: relative; width: 100%; background: #050505; border-radius: 14px; overflow: hidden; touch-action: none; }
+.length-stage > img { display: block; width: 100%; height: auto; user-select: none; }
+.endpoint { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #ffd21a; border: 3px solid #fff; z-index: 5; }
+.measure-line { position: absolute; height: 3px; background: #ffd21a; transform-origin: 0 50%; z-index: 3; }
+.unit-copy-clip { position: absolute; height: 90px; overflow: hidden; transform-origin: 50% 50%; z-index: 4; pointer-events: none; display: flex; align-items: center; }
+.unit-copy-clip img { display: block; max-height: 90px; object-fit: contain; transform-origin: center; }
+.range-label { display: grid; gap: 8px; font-weight: 700; }
+.range-label input { width: 100%; accent-color: #ffd21a; }
+.result-card { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 80px; border: 1px solid #e7e7e7; border-radius: 14px; padding: 12px; font-size: 1.35rem; }
+.result-card img { width: 54px; height: 54px; object-fit: contain; }
