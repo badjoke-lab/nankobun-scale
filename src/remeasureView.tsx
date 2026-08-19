@@ -5,8 +5,14 @@ type Locale = 'ja' | 'en'
 type Props = { locale: Locale; source: SavedMeasurement; onClose: () => void }
 
 const copy = {
-  ja: { title: 'この条件から測り直す', back: '履歴へ', scale: '大きさ', rotation: '向き', save: '新しい測定として保存', saved: '保存しました', failed: '保存できませんでした', hintLength: '端点をドラッグして変更できます', hintArea: '基準画像の位置をドラッグして変更できます' },
-  en: { title: 'Measure again from these settings', back: 'History', scale: 'Size', rotation: 'Angle', save: 'Save as a new measurement', saved: 'Saved', failed: 'Couldn’t save', hintLength: 'Drag the endpoints to change them', hintArea: 'Drag the unit origin to change it' },
+  ja: {
+    title: 'この条件から測り直す', back: '履歴へ', scale: '大きさ', rotation: '向き', save: '新しい測定として保存', saved: '保存しました', failed: '保存できませんでした',
+    hintLength: '端点をドラッグして変更できます', hintArea: '基準画像の位置をドラッグして変更できます', start: '始点', end: '終点', origin: '基準画像の位置', stageLength: '測定する長さの端点を調整', stageArea: '基準画像の位置を調整', loadFailed: '画像を読み込めませんでした。履歴に戻ってもう一度お試しください。',
+  },
+  en: {
+    title: 'Measure again from these settings', back: 'History', scale: 'Size', rotation: 'Angle', save: 'Save as a new measurement', saved: 'Saved', failed: 'Couldn’t save',
+    hintLength: 'Drag the endpoints to change them', hintArea: 'Drag the unit origin to change it', start: 'Start point', end: 'End point', origin: 'Unit position', stageLength: 'Adjust the measurement endpoints', stageArea: 'Adjust the unit position', loadFailed: 'Couldn’t load the image. Return to history and try again.',
+  },
 } as const
 
 function loadImage(src: string): Promise<HTMLImageElement> { return new Promise((resolve, reject) => { const image = new Image(); image.onload = () => resolve(image); image.onerror = reject; image.src = src }) }
@@ -51,30 +57,32 @@ export function RemeasureView({ locale, source, onClose }: Props) {
   const [bounds,setBounds] = React.useState({width:1,height:1})
   const [value,setValue] = React.useState(source.resultValue)
   const [status,setStatus] = React.useState<'idle'|'saved'|'error'>('idle')
+  const [loadFailed,setLoadFailed] = React.useState(false)
 
-  React.useEffect(()=>{ void effectiveBounds(source.unitImageDataUrl).then(setBounds) },[source.unitImageDataUrl])
+  React.useEffect(()=>{ let cancelled=false; void effectiveBounds(source.unitImageDataUrl).then(v=>{if(!cancelled)setBounds(v)}).catch(()=>{if(!cancelled)setLoadFailed(true)}); return()=>{cancelled=true} },[source.unitImageDataUrl])
   React.useEffect(()=>{
     if(source.geometry.mode==='length'){
       const [a,b]=endpoints, aspect=source.geometry.targetAspect, dx=b.x-a.x, dy=(b.y-a.y)*aspect, distance=Math.hypot(dx,dy), axis=Math.atan2(dy,dx), theta=rotation*Math.PI/180, unitAspect=bounds.height/Math.max(bounds.width,1)
       const projected=Math.abs(scale*Math.cos(theta-axis))+Math.abs(scale*unitAspect*Math.sin(theta-axis)); setValue(projected>0?distance/projected:0)
-    } else { let cancelled=false; void areaValue(source,scale,rotation,origin).then(v=>{if(!cancelled)setValue(v)}); return()=>{cancelled=true} }
+    } else { let cancelled=false; void areaValue(source,scale,rotation,origin).then(v=>{if(!cancelled)setValue(v)}).catch(()=>{if(!cancelled)setLoadFailed(true)}); return()=>{cancelled=true} }
   },[bounds,endpoints,origin,rotation,scale,source])
 
   const norm=(e:React.PointerEvent<HTMLDivElement>)=>{const r=e.currentTarget.getBoundingClientRect();return{x:Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y:Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))}}
   const move=(e:React.PointerEvent<HTMLDivElement>)=>{ if(drag===0||drag===1){const p=norm(e);setEndpoints(old=>old.map((x,i)=>i===drag?p:x) as [Point,Point])} else if(drag==='origin') setOrigin(norm(e)) }
-
   const save=async()=>{ setStatus('idle'); try { await saveMeasurement({ ...source, id: crypto.randomUUID(), createdAt:new Date().toISOString(), resultValue:value, geometry: source.geometry.mode==='length' ? { ...source.geometry, endpoints, unitScale:scale, unitRotation:rotation } : { ...source.geometry, tilingOrigin:origin, unitScale:scale, unitRotation:rotation } }); setStatus('saved') } catch { setStatus('error') } }
 
+  if(loadFailed) return <main className="editor-screen center-content"><button className="text-button" onClick={onClose} aria-label={t.back}>← {t.back}</button><p className="error-copy" role="alert">{t.loadFailed}</p></main>
+
   return <main className="editor-screen remeasure-screen">
-    <button className="text-button" onClick={onClose}>← {t.back}</button><h2>{t.title}</h2>
-    <div className="remeasure-stage" onPointerMove={move} onPointerUp={()=>setDrag(null)} onPointerCancel={()=>setDrag(null)}>
+    <button className="text-button" onClick={onClose} aria-label={t.back}>← {t.back}</button><h2>{t.title}</h2>
+    <div className="remeasure-stage" role="group" aria-label={source.geometry.mode==='length'?t.stageLength:t.stageArea} onPointerMove={move} onPointerUp={()=>setDrag(null)} onPointerCancel={()=>setDrag(null)}>
       <img src={source.targetImageDataUrl} alt="" draggable={false}/>
-      {source.geometry.mode==='length' ? <>{endpoints.map((p,i)=><span key={i} className="endpoint" style={{left:`${p.x*100}%`,top:`${p.y*100}%`}} onPointerDown={e=>{e.stopPropagation();setDrag(i);e.currentTarget.setPointerCapture(e.pointerId)}}/>)}<span className="measure-line" style={{left:`${endpoints[0].x*100}%`,top:`${endpoints[0].y*100}%`,width:`${Math.hypot(endpoints[1].x-endpoints[0].x,endpoints[1].y-endpoints[0].y)*100}%`,transform:`rotate(${Math.atan2(endpoints[1].y-endpoints[0].y,endpoints[1].x-endpoints[0].x)}rad)`}}/></> : <><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points={source.geometry.region.map(p=>`${p.x*100},${p.y*100}`).join(' ')} fill="rgba(255,210,26,.16)" stroke="#ffd21a" strokeWidth="1"/></svg><img className="area-origin-unit" src={source.unitImageDataUrl} alt="" style={{left:`${origin.x*100}%`,top:`${origin.y*100}%`,width:`${scale*100}%`,transform:`translate(-50%,-50%) rotate(${rotation}deg)`}} onPointerDown={e=>{e.stopPropagation();setDrag('origin');e.currentTarget.setPointerCapture(e.pointerId)}}/></>}
+      {source.geometry.mode==='length' ? <>{endpoints.map((p,i)=><button type="button" key={i} className="endpoint" aria-label={i===0?t.start:t.end} style={{left:`${p.x*100}%`,top:`${p.y*100}%`}} onPointerDown={e=>{e.stopPropagation();setDrag(i);e.currentTarget.setPointerCapture(e.pointerId)}}/>)}<span className="measure-line" aria-hidden="true" style={{left:`${endpoints[0].x*100}%`,top:`${endpoints[0].y*100}%`,width:`${Math.hypot(endpoints[1].x-endpoints[0].x,endpoints[1].y-endpoints[0].y)*100}%`,transform:`rotate(${Math.atan2(endpoints[1].y-endpoints[0].y,endpoints[1].x-endpoints[0].x)}rad)`}}/></> : <><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points={source.geometry.region.map(p=>`${p.x*100},${p.y*100}`).join(' ')} fill="rgba(255,210,26,.16)" stroke="#ffd21a" strokeWidth="1"/></svg><button type="button" className="unit-drag-control" aria-label={t.origin} style={{left:`${origin.x*100}%`,top:`${origin.y*100}%`,width:`${Math.max(scale*100,12)}%`}} onPointerDown={e=>{e.stopPropagation();setDrag('origin');e.currentTarget.setPointerCapture(e.pointerId)}}><img className="area-origin-unit" src={source.unitImageDataUrl} alt="" style={{width:'100%',transform:`rotate(${rotation}deg)`}}/></button></>}
     </div>
     <p className="muted">{source.geometry.mode==='length'?t.hintLength:t.hintArea}</p>
-    <label className="range-label">{t.scale}<input type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={e=>setScale(Number(e.target.value))}/></label>
-    <label className="range-label">{t.rotation}<input type="range" min="-180" max="180" step="1" value={rotation} onChange={e=>setRotation(Number(e.target.value))}/></label>
-    <div className="result-card"><img src={source.unitImageDataUrl} alt={source.unitName||''}/><strong>× {value.toFixed(1)}</strong></div>
-    <button className="primary-button" onClick={()=>void save()}>{t.save}</button>{status==='saved'&&<p className="success-copy">{t.saved}</p>}{status==='error'&&<p className="error-copy">{t.failed}</p>}
+    <label className="range-label">{t.scale}<input aria-label={t.scale} type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={e=>setScale(Number(e.target.value))}/></label>
+    <label className="range-label">{t.rotation}<input aria-label={t.rotation} type="range" min="-180" max="180" step="1" value={rotation} onChange={e=>setRotation(Number(e.target.value))}/></label>
+    <div className="result-card" aria-live="polite"><img src={source.unitImageDataUrl} alt={source.unitName||''}/><strong>× {value.toFixed(1)}</strong></div>
+    <button className="primary-button" onClick={()=>void save()}>{t.save}</button>{status==='saved'&&<p className="success-copy" role="status">{t.saved}</p>}{status==='error'&&<p className="error-copy" role="alert">{t.failed}</p>}
   </main>
 }
