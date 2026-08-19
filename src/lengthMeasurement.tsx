@@ -161,10 +161,10 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
       <img src={target} alt="" draggable={false}/>
       {a && <span className="endpoint" onPointerDown={(e) => { e.stopPropagation(); setDragPoint(0); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%` }} />}
       {b && <span className="endpoint" onPointerDown={(e) => { e.stopPropagation(); setDragPoint(1); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%` }} />}
-      {a && b && <span className="measure-line" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${Math.hypot(b.x-a.x,b.y-a.y) * 100}%`, transform: `rotate(${Math.atan2(b.y-a.y,b.x-a.x)}rad)` }} />}
+      {a && b && <span className="measure-line" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${distance * 100}%`, transform: `rotate(${axisAngle}rad)` }} />}
       {!confirmed && a && b && !repeated && <img src={unit.imageDataUrl} alt="" onPointerDown={(e) => { e.stopPropagation(); setDragUnit(true); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ position: 'absolute', left: `${unitPosition.x * 100}%`, top: `${unitPosition.y * 100}%`, width: `${unitWidth * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)`, touchAction: 'none' }} />}
-      {copies.map((copy) => <div key={copy.i} className="unit-copy-clip" style={{ left: `${copy.cx * 100}%`, top: `${copy.cy * 100}%`, width: `${projected * 100}%`, clipPath: copy.fraction < 1 ? `inset(0 ${(1-copy.fraction)*100}% 0 0)` : undefined, transform: `translate(-50%,-50%) rotate(${Math.atan2((b!.y-a!.y),(b!.x-a!.x))}rad)` }}>
-        <img src={unit.imageDataUrl} alt="" style={{ width: `${unitWidth / Math.max(projected, 1e-9) * 100}%`, transform: `rotate(${rotation - Math.atan2((b!.y-a!.y),(b!.x-a!.x)) * 180 / Math.PI}deg)` }}/>
+      {copies.map((copy) => <div key={copy.i} className="unit-copy-clip" style={{ left: `${copy.cx * 100}%`, top: `${copy.cy * 100}%`, width: `${projected * 100}%`, clipPath: copy.fraction < 1 ? `inset(0 ${(1-copy.fraction)*100}% 0 0)` : undefined, transform: `translate(-50%,-50%) rotate(${axisAngle}rad)` }}>
+        <img src={unit.imageDataUrl} alt="" style={{ width: `${unitWidth / Math.max(projected, 1e-9) * 100}%`, transform: `rotate(${rotation - axisAngle * 180 / Math.PI}deg)` }}/>
       </div>)}
     </div>
 
