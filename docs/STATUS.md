@@ -6,12 +6,12 @@ Last updated: 2026-08-20
 
 Current gate: **Gate 7 — Language, accessibility, and failure handling**
 
-Current branch: `main`
+Current branch: `gate-7-language-accessibility-failures`
 
 Current work:
 - complete Japanese / English UI coverage
 - accessibility and touch-target review
-- camera permission and capture failure recovery
+- camera/image acquisition failure recovery
 - invalid selection / invalid area recovery
 - local save and export failure recovery
 - empty states
@@ -36,6 +36,14 @@ Gate 6 merged through PR #5 after CI passed on exact head `92bea42625255189d46b1
 
 - Gate 7 — Language, accessibility, and failure handling
 
+Implemented in the current Gate 7 branch so far:
+- photographed-unit image read failures now produce localized user-facing recovery text
+- selection errors are announced through alert semantics
+- camera/library and back/close controls have explicit accessible labels
+- selection review cannot continue before a valid minimum point count exists
+- undo/reset controls disable when they cannot act
+- the photographed-unit selection stage has an accessible label
+
 Gate 7 must preserve these established boundaries:
 - no measurement-changing control is allowed in presentation-only result editing
 - error messages must be user-facing and must not expose raw technical or infrastructure details
@@ -45,7 +53,7 @@ Gate 7 must preserve these established boundaries:
 
 ## Next
 
-Run the Gate 7 implementation audit against `docs/PRODUCT_SPEC.md`, close missing language/error/accessibility states, pass CI on an exact PR head, then proceed to Gate 8 — ordinary cm / inch measurement.
+Continue the Gate 7 audit across target measurement, history/export, keyboard/touch targets, and empty/error states; pass CI on an exact PR head; then proceed to Gate 8 — ordinary cm / inch measurement.
 
 ## Reference rule
 
