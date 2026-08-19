@@ -5,23 +5,24 @@ import { registerServiceWorker } from './pwa'
 import { UnitCreator } from './unitCreator'
 import { LengthMeasurement } from './lengthMeasurement'
 import { AreaMeasurement } from './areaMeasurement'
+import { HistoryView } from './historyView'
 import { deleteUnit, listSavedUnits, saveUnit, type SavedUnit } from './storage'
 
 const strings = {
   ja: {
     tagline: '好きなものを、ものさしに。', primary: '撮ったもので測る', reuse: 'また使う', empty: '保存したものはまだありません', standard: 'cm・inchで測る',
-    use: 'これで測る', edit: '編集', remove: '削除', back: 'ホームへ',
+    use: 'これで測る', edit: '編集', remove: '削除', back: 'ホームへ', history: '履歴',
     name: '名前をつける・変更', save: '保存', deleteQuestion: 'この画像を削除しますか？', cancel: 'キャンセル',
   },
   en: {
     tagline: 'Measure with anything.', primary: 'Measure with a photo', reuse: 'Use again', empty: 'Nothing saved yet', standard: 'Measure in cm / inch',
-    use: 'Measure with this', edit: 'Edit', remove: 'Delete', back: 'Home',
+    use: 'Measure with this', edit: 'Edit', remove: 'Delete', back: 'Home', history: 'History',
     name: 'Add or change name', save: 'Save', deleteQuestion: 'Delete this image?', cancel: 'Cancel',
   },
 } as const
 
 type Locale = keyof typeof strings
-type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement' | 'area-measurement'
+type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement' | 'area-measurement' | 'history'
 
 function detectLocale(): Locale {
   const saved = localStorage.getItem('nankobun.locale')
@@ -96,6 +97,10 @@ function App() {
     return <AreaMeasurement locale={locale} unit={activeUnit} target={areaTarget} onClose={() => setScreen('home')} />
   }
 
+  if (screen === 'history') {
+    return <HistoryView locale={locale} onClose={() => setScreen('home')} />
+  }
+
   return <main className="app-shell">
     <header className="topbar">
       <div><h1>NANKOBUN SCALE</h1><p>{t.tagline}</p></div>
@@ -121,7 +126,10 @@ function App() {
       </div>}
     </section>
 
-    <section className="secondary-section"><button className="secondary-button" disabled>{t.standard}</button></section>
+    <section className="secondary-section">
+      <button className="secondary-button" onClick={() => setScreen('history')}>{t.history}</button>
+      <button className="secondary-button" disabled>{t.standard}</button>
+    </section>
   </main>
 }
 
