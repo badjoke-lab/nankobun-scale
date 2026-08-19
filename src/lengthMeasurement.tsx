@@ -1,5 +1,5 @@
 import React from 'react'
-import type { SavedUnit } from './storage'
+import { saveMeasurement, type SavedUnit } from './storage'
 
 type Locale = 'ja' | 'en'
 type Point = { x: number; y: number }
@@ -17,12 +17,14 @@ const copy = {
     chooseMode: 'どちらを測りますか？', length: '長さ', area: '面積', endpoints: '測りたい長さの両端をタップ',
     adjust: '撮ったものの大きさや向きを決めてください', repeat: '並べる', confirm: 'この測定で決定',
     remeasure: '測り直す', back: '戻る', scale: '大きさ', rotation: '向き', result: '測定結果',
+    save: '保存', saved: '保存しました', saveFailed: '保存できませんでした',
   },
   en: {
     capture: 'Choose what you want to measure', camera: 'Take photo', library: 'Choose photo',
     chooseMode: 'What do you want to measure?', length: 'Length', area: 'Area', endpoints: 'Tap both ends of the length',
     adjust: 'Set the size and angle', repeat: 'Repeat', confirm: 'Confirm measurement', remeasure: 'Measure again',
     back: 'Back', scale: 'Size', rotation: 'Angle', result: 'Result',
+    save: 'Save', saved: 'Saved', saveFailed: 'Couldn’t save',
   },
 } as const
 
@@ -77,6 +79,7 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   const [unitBounds, setUnitBounds] = React.useState({ width: 1, height: 1 })
   const [repeated, setRepeated] = React.useState(false)
   const [confirmed, setConfirmed] = React.useState(false)
+  const [saveState, setSaveState] = React.useState<'idle' | 'saved' | 'error'>('idle')
   const [dragPoint, setDragPoint] = React.useState<number | null>(null)
   const [unitPosition, setUnitPosition] = React.useState<Point>({ x: 0.5, y: 0.5 })
   const [dragUnit, setDragUnit] = React.useState(false)
@@ -88,7 +91,7 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
     if (!value) return
     const image = await loadImage(value)
     setTargetAspect(image.naturalHeight / Math.max(image.naturalWidth, 1))
-    setTarget(value); setModeChosen(false); setPoints([]); setRepeated(false); setConfirmed(false)
+    setTarget(value); setModeChosen(false); setPoints([]); setRepeated(false); setConfirmed(false); setSaveState('idle')
   }
 
   const normalizedPoint = (event: React.PointerEvent<HTMLDivElement>): Point => {
@@ -154,6 +157,27 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
     return { i, cx, cy, fraction: isFraction ? fraction : 1 }
   }) : []
 
+  const saveConfirmed = async () => {
+    if (!confirmed || !target || !a || !b) return
+    setSaveState('idle')
+    try {
+      await saveMeasurement({
+        id: crypto.randomUUID(),
+        mode: 'length',
+        resultValue: value,
+        createdAt: new Date().toISOString(),
+        unitId: unit.id,
+        unitName: unit.name,
+        unitImageDataUrl: unit.imageDataUrl,
+        targetImageDataUrl: target,
+        geometry: { mode: 'length', endpoints: [a, b], unitScale: scale, unitRotation: rotation, unitPosition, targetAspect },
+      })
+      setSaveState('saved')
+    } catch {
+      setSaveState('error')
+    }
+  }
+
   return <main className="editor-screen length-screen">
     <button className="text-button" onClick={onClose}>← {t.back}</button>
     <h2>{confirmed ? t.result : points.length < 2 ? t.endpoints : t.adjust}</h2>
@@ -171,9 +195,14 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
     {!confirmed && points.length === 2 && <>
       <label className="range-label">{t.scale}<input type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={(e) => { setScale(Number(e.target.value)); setRepeated(false) }}/></label>
       <label className="range-label">{t.rotation}<input type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setRepeated(false) }}/></label>
-      {!repeated ? <button className="primary-button" onClick={() => setRepeated(true)}>{t.repeat}</button> : <button className="primary-button" onClick={() => setConfirmed(true)}>{t.confirm}</button>}
+      {!repeated ? <button className="primary-button" onClick={() => setRepeated(true)}>{t.repeat}</button> : <button className="primary-button" onClick={() => { setConfirmed(true); setSaveState('idle') }}>{t.confirm}</button>}
     </>}
     {points.length === 2 && repeated && <div className="result-card"><img src={unit.imageDataUrl} alt=""/><strong>× {value.toFixed(1)}</strong></div>}
-    {confirmed && <button className="secondary-button" onClick={() => { setConfirmed(false); setRepeated(true) }}>{t.remeasure}</button>}
+    {confirmed && <div className="confirmed-actions">
+      <button className="primary-button" onClick={() => void saveConfirmed()}>{t.save}</button>
+      {saveState === 'saved' && <p className="success-copy">{t.saved}</p>}
+      {saveState === 'error' && <p className="error-copy">{t.saveFailed}</p>}
+      <button className="secondary-button" onClick={() => { setConfirmed(false); setRepeated(true); setSaveState('idle') }}>{t.remeasure}</button>
+    </div>}
   </main>
 }
