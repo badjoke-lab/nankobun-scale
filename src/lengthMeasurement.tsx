@@ -8,38 +8,19 @@ type Props = {
   locale: Locale
   unit: SavedUnit
   onClose: () => void
+  onArea: (target: string) => void
 }
 
 const copy = {
   ja: {
-    capture: '測りたいものを撮ってください',
-    chooseMode: 'どちらを測りますか？',
-    length: '長さ',
-    area: '面積',
-    endpoints: '測りたい長さの両端をタップ',
-    adjust: '撮ったものの大きさや向きを決めてください',
-    repeat: '並べる',
-    confirm: 'この測定で決定',
-    remeasure: '測り直す',
-    back: '戻る',
-    scale: '大きさ',
-    rotation: '向き',
-    result: '測定結果',
+    capture: '測りたいものを撮ってください', chooseMode: 'どちらを測りますか？', length: '長さ', area: '面積',
+    endpoints: '測りたい長さの両端をタップ', adjust: '撮ったものの大きさや向きを決めてください', repeat: '並べる',
+    confirm: 'この測定で決定', remeasure: '測り直す', back: '戻る', scale: '大きさ', rotation: '向き', result: '測定結果',
   },
   en: {
-    capture: 'Take a photo of what you want to measure',
-    chooseMode: 'What do you want to measure?',
-    length: 'Length',
-    area: 'Area',
-    endpoints: 'Tap both ends of the length',
-    adjust: 'Set the size and angle',
-    repeat: 'Repeat',
-    confirm: 'Confirm measurement',
-    remeasure: 'Measure again',
-    back: 'Back',
-    scale: 'Size',
-    rotation: 'Angle',
-    result: 'Result',
+    capture: 'Take a photo of what you want to measure', chooseMode: 'What do you want to measure?', length: 'Length', area: 'Area',
+    endpoints: 'Tap both ends of the length', adjust: 'Set the size and angle', repeat: 'Repeat', confirm: 'Confirm measurement',
+    remeasure: 'Measure again', back: 'Back', scale: 'Size', rotation: 'Angle', result: 'Result',
   },
 } as const
 
@@ -81,7 +62,7 @@ async function effectiveBounds(src: string): Promise<{ width: number; height: nu
   return { width: maxX - minX + 1, height: maxY - minY + 1 }
 }
 
-export function LengthMeasurement({ locale, unit, onClose }: Props) {
+export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   const t = copy[locale]
   const [target, setTarget] = React.useState<string | null>(null)
   const [modeChosen, setModeChosen] = React.useState(false)
@@ -105,10 +86,7 @@ export function LengthMeasurement({ locale, unit, onClose }: Props) {
 
   const normalizedPoint = (event: React.PointerEvent<HTMLDivElement>): Point => {
     const rect = event.currentTarget.getBoundingClientRect()
-    return {
-      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
-    }
+    return { x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)), y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)) }
   }
 
   const stagePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -121,11 +99,9 @@ export function LengthMeasurement({ locale, unit, onClose }: Props) {
     if (confirmed) return
     if (dragPoint !== null) {
       const next = normalizedPoint(event)
-      setPoints((old) => old.map((p, i) => i === dragPoint ? next : p))
-      setRepeated(false)
+      setPoints((old) => old.map((p, i) => i === dragPoint ? next : p)); setRepeated(false)
     } else if (dragUnit) {
-      setUnitPosition(normalizedPoint(event))
-      setRepeated(false)
+      setUnitPosition(normalizedPoint(event)); setRepeated(false)
     }
   }
 
@@ -140,7 +116,7 @@ export function LengthMeasurement({ locale, unit, onClose }: Props) {
     <h2>{t.chooseMode}</h2>
     <div className="cutout-preview"><img src={target} alt="" /></div>
     <button className="primary-button" onClick={() => setModeChosen(true)}>{t.length}</button>
-    <button className="secondary-button" disabled>{t.area}</button>
+    <button className="secondary-button" onClick={() => onArea(target)}>{t.area}</button>
   </main>
 
   const a = points[0], b = points[1]
@@ -184,7 +160,6 @@ export function LengthMeasurement({ locale, unit, onClose }: Props) {
       <label className="range-label">{t.rotation}<input type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setRepeated(false) }}/></label>
       {!repeated ? <button className="primary-button" onClick={() => setRepeated(true)}>{t.repeat}</button> : <button className="primary-button" onClick={() => setConfirmed(true)}>{t.confirm}</button>}
     </>}
-
     {points.length === 2 && repeated && <div className="result-card"><img src={unit.imageDataUrl} alt=""/><strong>× {value.toFixed(1)}</strong></div>}
     {confirmed && <button className="secondary-button" onClick={() => { setConfirmed(false); setRepeated(true) }}>{t.remeasure}</button>}
   </main>
