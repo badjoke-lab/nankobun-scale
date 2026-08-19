@@ -14,13 +14,15 @@ type Props = {
 
 const copy = {
   ja: {
-    capture: '測る基準にしたいものを撮ってください', choose: '使いたい部分を囲んでください', chooseHelp: '画像の上を順番にタップして、使いたい部分を囲みます。',
+    capture: '測る基準にしたいものを用意してください', camera: '撮影する', library: '写真から選ぶ',
+    choose: '使いたい部分を囲んでください', chooseHelp: '画像の上を順番にタップして、使いたい部分を囲みます。',
     undo: '1点戻す', reset: 'やり直す', next: '確認する', confirm: 'この部分を使いますか？', use: '使う', reselect: '選び直す',
     whatNext: 'この画像をどうしますか？', measure: 'これで測る', save: '保存する', name: '名前をつける（任意）', optional: '空欄のままでも保存できます',
     saved: '保存しました', home: 'ホームへ', invalid: '3点以上で囲んでください', failed: '保存できませんでした。もう一度お試しください。',
   },
   en: {
-    capture: 'Take a photo of what you want to measure with', choose: 'Outline the part you want to use', chooseHelp: 'Tap around the part you want to use.',
+    capture: 'Choose what you want to measure with', camera: 'Take photo', library: 'Choose photo',
+    choose: 'Outline the part you want to use', chooseHelp: 'Tap around the part you want to use.',
     undo: 'Undo point', reset: 'Start over', next: 'Review', confirm: 'Use this part?', use: 'Use', reselect: 'Choose again',
     whatNext: 'What would you like to do with this image?', measure: 'Measure with this', save: 'Save', name: 'Add a name (optional)', optional: 'You can save it without a name',
     saved: 'Saved', home: 'Home', invalid: 'Use at least 3 points to outline the part', failed: 'Couldn’t save. Please try again.',
@@ -57,6 +59,8 @@ async function makeMaskedImage(source: string, polygon: Point[]): Promise<string
 
 export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Props) {
   const t = copy[locale]
+  const cameraInput = React.useRef<HTMLInputElement>(null)
+  const libraryInput = React.useRef<HTMLInputElement>(null)
   const [source, setSource] = React.useState<string | null>(null)
   const [polygon, setPolygon] = React.useState<Point[]>([])
   const [masked, setMasked] = React.useState<string | null>(null)
@@ -104,9 +108,15 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
     } catch { setMessage(t.failed) }
   }
 
-  if (step === 'capture') return <main className="camera-screen">
-    <button className="ghost-button top-left" onClick={onClose}>←</button><div className="camera-copy">{t.capture}</div>
-    <label className="shutter-file"><input type="file" accept="image/*" capture="environment" onChange={(e) => chooseFile(e.target.files?.[0])} /><span className="shutter" aria-label={t.capture} /></label>
+  if (step === 'capture') return <main className="camera-screen source-choice-screen">
+    <button className="ghost-button top-left" onClick={onClose}>←</button>
+    <div className="camera-copy">{t.capture}</div>
+    <div className="source-choice-actions">
+      <button className="primary-button" onClick={() => cameraInput.current?.click()}>{t.camera}</button>
+      <button className="secondary-button" onClick={() => libraryInput.current?.click()}>{t.library}</button>
+    </div>
+    <input ref={cameraInput} className="hidden-file-input" type="file" accept="image/*" capture="environment" onChange={(e) => chooseFile(e.target.files?.[0])} />
+    <input ref={libraryInput} className="hidden-file-input" type="file" accept="image/*" onChange={(e) => chooseFile(e.target.files?.[0])} />
   </main>
 
   if (step === 'select' && source) {
