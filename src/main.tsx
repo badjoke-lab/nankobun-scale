@@ -4,6 +4,7 @@ import './styles.css'
 import { registerServiceWorker } from './pwa'
 import { UnitCreator } from './unitCreator'
 import { LengthMeasurement } from './lengthMeasurement'
+import { AreaMeasurement } from './areaMeasurement'
 import { deleteUnit, listSavedUnits, saveUnit, type SavedUnit } from './storage'
 
 const strings = {
@@ -20,7 +21,7 @@ const strings = {
 } as const
 
 type Locale = keyof typeof strings
-type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement'
+type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement' | 'area-measurement'
 
 function detectLocale(): Locale {
   const saved = localStorage.getItem('nankobun.locale')
@@ -33,6 +34,7 @@ function App() {
   const [screen, setScreen] = React.useState<Screen>('home')
   const [units, setUnits] = React.useState<SavedUnit[]>([])
   const [activeUnit, setActiveUnit] = React.useState<SavedUnit | null>(null)
+  const [areaTarget, setAreaTarget] = React.useState<string | null>(null)
   const [editName, setEditName] = React.useState('')
   const t = strings[locale]
 
@@ -50,6 +52,7 @@ function App() {
 
   const startMeasurement = (unit: SavedUnit) => {
     setActiveUnit(unit)
+    setAreaTarget(null)
     setScreen('length-measurement')
   }
 
@@ -86,7 +89,11 @@ function App() {
   }
 
   if (screen === 'length-measurement' && activeUnit) {
-    return <LengthMeasurement locale={locale} unit={activeUnit} onClose={() => setScreen('home')} />
+    return <LengthMeasurement locale={locale} unit={activeUnit} onClose={() => setScreen('home')} onArea={(target) => { setAreaTarget(target); setScreen('area-measurement') }} />
+  }
+
+  if (screen === 'area-measurement' && activeUnit && areaTarget) {
+    return <AreaMeasurement locale={locale} unit={activeUnit} target={areaTarget} onClose={() => setScreen('home')} />
   }
 
   return <main className="app-shell">
