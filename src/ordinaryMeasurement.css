@@ -1,0 +1,13 @@
+.ordinary-screen { position: relative; }
+.ordinary-unavailable { border: 1px solid #e6e6e6; border-radius: 14px; padding: 18px; }
+.xr-overlay { display: none; }
+.xr-overlay.active { position: fixed; inset: 0; z-index: 1000; display: block; color: #fff; pointer-events: none; }
+.xr-crosshair { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; transform: translate(-50%, -50%); }
+.xr-crosshair span { position: absolute; background: #ffd21a; }
+.xr-crosshair span:first-child { left: 0; right: 0; top: 16px; height: 2px; }
+.xr-crosshair span:last-child { top: 0; bottom: 0; left: 16px; width: 2px; }
+.xr-controls { position: absolute; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: rgba(5,5,5,.82); pointer-events: auto; }
+.xr-copy { margin: 0; text-align: center; font-weight: 700; }
+.xr-result { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.94); color: #111; text-align: center; }
+.xr-result span { grid-column: 1 / -1; font-size: .8rem; color: #666; }
+.xr-result strong { font-size: 1.15rem; }

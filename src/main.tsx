@@ -7,6 +7,7 @@ import { LengthMeasurement } from './lengthMeasurement'
 import { AreaMeasurement } from './areaMeasurement'
 import { HistoryView } from './historyView'
 import { RemeasureView } from './remeasureView'
+import { OrdinaryMeasurement } from './ordinaryMeasurement'
 import { deleteUnit, listSavedUnits, saveUnit, type SavedMeasurement, type SavedUnit } from './storage'
 
 const strings = {
@@ -15,7 +16,7 @@ const strings = {
 } as const
 
 type Locale = keyof typeof strings
-type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement' | 'area-measurement' | 'history' | 'remeasure'
+type Screen = 'home' | 'create' | 'unit-actions' | 'length-measurement' | 'area-measurement' | 'history' | 'remeasure' | 'ordinary-measurement'
 
 function detectLocale(): Locale { const saved = localStorage.getItem('nankobun.locale'); if (saved === 'ja' || saved === 'en') return saved; return navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'en' }
 
@@ -41,8 +42,9 @@ function App() {
   if (screen === 'area-measurement' && activeUnit && areaTarget) return <AreaMeasurement locale={locale} unit={activeUnit} target={areaTarget} onClose={() => setScreen('home')} />
   if (screen === 'history') return <HistoryView locale={locale} onClose={() => setScreen('home')} onRemeasure={(measurement) => { setRemeasureSource(measurement); setScreen('remeasure') }} />
   if (screen === 'remeasure' && remeasureSource) return <RemeasureView locale={locale} source={remeasureSource} onClose={() => setScreen('history')} />
+  if (screen === 'ordinary-measurement') return <OrdinaryMeasurement locale={locale} onClose={() => setScreen('home')} />
 
-  return <main className="app-shell"><header className="topbar"><div><h1>NANKOBUN SCALE</h1><p>{t.tagline}</p></div><div className="language-switch" aria-label="Language"><button className={locale === 'ja' ? 'active' : ''} onClick={() => switchLocale('ja')}>日本語</button><button className={locale === 'en' ? 'active' : ''} onClick={() => switchLocale('en')}>EN</button></div></header><section className="primary-section"><button className="primary-button" onClick={() => setScreen('create')}>{t.primary}</button></section><section className="saved-section"><div className="section-heading"><h2>{t.reuse}</h2></div>{units.length === 0 ? <div className="empty-card">{t.empty}</div> : <div className="saved-grid">{units.map((unit) => <article className="saved-card" key={unit.id}><button className="saved-image-button" onClick={() => openUnitActions(unit)}><img src={unit.imageDataUrl} alt={unit.name || ''} /></button>{unit.name && <strong>{unit.name}</strong>}<div className="saved-actions"><button onClick={() => startMeasurement(unit)}>{t.use}</button><button onClick={() => openUnitActions(unit)}>{t.edit}</button></div></article>)}</div>}</section><section className="secondary-section"><button className="secondary-button" onClick={() => setScreen('history')}>{t.history}</button><button className="secondary-button" disabled>{t.standard}</button></section></main>
+  return <main className="app-shell"><header className="topbar"><div><h1>NANKOBUN SCALE</h1><p>{t.tagline}</p></div><div className="language-switch" aria-label="Language"><button className={locale === 'ja' ? 'active' : ''} onClick={() => switchLocale('ja')}>日本語</button><button className={locale === 'en' ? 'active' : ''} onClick={() => switchLocale('en')}>EN</button></div></header><section className="primary-section"><button className="primary-button" onClick={() => setScreen('create')}>{t.primary}</button></section><section className="saved-section"><div className="section-heading"><h2>{t.reuse}</h2></div>{units.length === 0 ? <div className="empty-card">{t.empty}</div> : <div className="saved-grid">{units.map((unit) => <article className="saved-card" key={unit.id}><button className="saved-image-button" onClick={() => openUnitActions(unit)}><img src={unit.imageDataUrl} alt={unit.name || ''} /></button>{unit.name && <strong>{unit.name}</strong>}<div className="saved-actions"><button onClick={() => startMeasurement(unit)}>{t.use}</button><button onClick={() => openUnitActions(unit)}>{t.edit}</button></div></article>)}</div>}</section><section className="secondary-section"><button className="secondary-button" onClick={() => setScreen('history')}>{t.history}</button><button className="secondary-button" onClick={() => setScreen('ordinary-measurement')}>{t.standard}</button></section></main>
 }
 
 registerServiceWorker()
