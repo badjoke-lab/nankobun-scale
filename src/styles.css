@@ -51,8 +51,10 @@ h2 { margin: 0; font-size: 1.1rem; }
 .camera-screen { width: min(100%, 430px); min-height: 100svh; margin: 0 auto; background: #050505; color: #fff; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 24px; }
 .camera-copy { position: absolute; top: 70px; left: 24px; right: 24px; text-align: center; font-weight: 700; }
 .top-left { position: absolute; top: 20px; left: 14px; color: #fff; font-size: 1.4rem; }
-.shutter-file input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
+.shutter-file input, .hidden-file-input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
 .shutter { display: block; width: 74px; height: 74px; border-radius: 50%; background: #ffd21a; border: 6px solid #fff; box-shadow: 0 0 0 3px #ffd21a; }
+.source-choice-screen { justify-content: flex-end; }
+.source-choice-actions { width: 100%; display: grid; gap: 12px; margin-bottom: max(24px, env(safe-area-inset-bottom)); }
 
 .selection-stage { position: relative; width: 100%; background: #111; border-radius: 14px; overflow: hidden; touch-action: none; }
 .selection-stage img { display: block; width: 100%; height: auto; user-select: none; }
