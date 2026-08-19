@@ -18,6 +18,9 @@ const copy = {
     adjust: '撮ったものの大きさや向きを決めてください', repeat: '並べる', confirm: 'この測定で決定',
     remeasure: '測り直す', back: '戻る', scale: '大きさ', rotation: '向き', result: '測定結果',
     save: '保存', saved: '保存しました', saveFailed: '保存できませんでした',
+    imageFailed: '画像を読み込めませんでした。別の画像でもう一度お試しください。',
+    stageLabel: '長さを測る画像。測りたい長さの両端を指定してください。',
+    endpointA: '始点', endpointB: '終点', unitHandle: '基準画像を移動',
   },
   en: {
     capture: 'Choose what you want to measure', camera: 'Take photo', library: 'Choose photo',
@@ -25,6 +28,9 @@ const copy = {
     adjust: 'Set the size and angle', repeat: 'Repeat', confirm: 'Confirm measurement', remeasure: 'Measure again',
     back: 'Back', scale: 'Size', rotation: 'Angle', result: 'Result',
     save: 'Save', saved: 'Saved', saveFailed: 'Couldn’t save',
+    imageFailed: 'Couldn’t load that image. Please try another image.',
+    stageLabel: 'Image for length measurement. Set both ends of the length you want to measure.',
+    endpointA: 'Start point', endpointB: 'End point', unitHandle: 'Move unit image',
   },
 } as const
 
@@ -83,15 +89,23 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   const [dragPoint, setDragPoint] = React.useState<number | null>(null)
   const [unitPosition, setUnitPosition] = React.useState<Point>({ x: 0.5, y: 0.5 })
   const [dragUnit, setDragUnit] = React.useState(false)
+  const [imageError, setImageError] = React.useState('')
 
-  React.useEffect(() => { void effectiveBounds(unit.imageDataUrl).then(setUnitBounds) }, [unit.imageDataUrl])
+  React.useEffect(() => {
+    void effectiveBounds(unit.imageDataUrl).then(setUnitBounds).catch(() => setImageError(t.imageFailed))
+  }, [t.imageFailed, unit.imageDataUrl])
 
   const chooseTarget = async (file?: File) => {
-    const value = await readFile(file)
-    if (!value) return
-    const image = await loadImage(value)
-    setTargetAspect(image.naturalHeight / Math.max(image.naturalWidth, 1))
-    setTarget(value); setModeChosen(false); setPoints([]); setRepeated(false); setConfirmed(false); setSaveState('idle')
+    setImageError('')
+    try {
+      const value = await readFile(file)
+      if (!value) { if (file) setImageError(t.imageFailed); return }
+      const image = await loadImage(value)
+      setTargetAspect(image.naturalHeight / Math.max(image.naturalWidth, 1))
+      setTarget(value); setModeChosen(false); setPoints([]); setRepeated(false); setConfirmed(false); setSaveState('idle')
+    } catch {
+      setImageError(t.imageFailed)
+    }
   }
 
   const normalizedPoint = (event: React.PointerEvent<HTMLDivElement>): Point => {
@@ -116,11 +130,12 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   }
 
   if (!target) return <main className="camera-screen source-choice-screen">
-    <button className="ghost-button top-left" onClick={onClose}>←</button>
+    <button className="ghost-button top-left" aria-label={t.back} onClick={onClose}>←</button>
     <div className="camera-copy">{t.capture}</div>
     <div className="source-choice-actions">
-      <button className="primary-button" onClick={() => cameraInput.current?.click()}>{t.camera}</button>
-      <button className="secondary-button" onClick={() => libraryInput.current?.click()}>{t.library}</button>
+      <button className="primary-button" aria-label={t.camera} onClick={() => cameraInput.current?.click()}>{t.camera}</button>
+      <button className="secondary-button" aria-label={t.library} onClick={() => libraryInput.current?.click()}>{t.library}</button>
+      {imageError && <p className="error-copy" role="alert">{imageError}</p>}
     </div>
     <input ref={cameraInput} className="hidden-file-input" type="file" accept="image/*" capture="environment" onChange={(e) => void chooseTarget(e.target.files?.[0])}/>
     <input ref={libraryInput} className="hidden-file-input" type="file" accept="image/*" onChange={(e) => void chooseTarget(e.target.files?.[0])}/>
@@ -162,46 +177,39 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
     setSaveState('idle')
     try {
       await saveMeasurement({
-        id: crypto.randomUUID(),
-        mode: 'length',
-        resultValue: value,
-        createdAt: new Date().toISOString(),
-        unitId: unit.id,
-        unitName: unit.name,
-        unitImageDataUrl: unit.imageDataUrl,
-        targetImageDataUrl: target,
+        id: crypto.randomUUID(), mode: 'length', resultValue: value, createdAt: new Date().toISOString(),
+        unitId: unit.id, unitName: unit.name, unitImageDataUrl: unit.imageDataUrl, targetImageDataUrl: target,
         geometry: { mode: 'length', endpoints: [a, b], unitScale: scale, unitRotation: rotation, unitPosition, targetAspect },
       })
       setSaveState('saved')
-    } catch {
-      setSaveState('error')
-    }
+    } catch { setSaveState('error') }
   }
 
   return <main className="editor-screen length-screen">
     <button className="text-button" onClick={onClose}>← {t.back}</button>
     <h2>{confirmed ? t.result : points.length < 2 ? t.endpoints : t.adjust}</h2>
-    <div className="length-stage" onPointerDown={stagePointerDown} onPointerMove={stagePointerMove} onPointerUp={() => { setDragPoint(null); setDragUnit(false) }} onPointerCancel={() => { setDragPoint(null); setDragUnit(false) }}>
+    {imageError && <p className="error-copy" role="alert">{imageError}</p>}
+    <div className="length-stage" role="group" aria-label={t.stageLabel} onPointerDown={stagePointerDown} onPointerMove={stagePointerMove} onPointerUp={() => { setDragPoint(null); setDragUnit(false) }} onPointerCancel={() => { setDragPoint(null); setDragUnit(false) }}>
       <img src={target} alt="" draggable={false}/>
-      {a && <span className="endpoint" onPointerDown={(e) => { e.stopPropagation(); setDragPoint(0); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%` }} />}
-      {b && <span className="endpoint" onPointerDown={(e) => { e.stopPropagation(); setDragPoint(1); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%` }} />}
-      {a && b && <span className="measure-line" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${distance * 100}%`, transform: `rotate(${axisAngle}rad)` }} />}
-      {!confirmed && a && b && !repeated && <img src={unit.imageDataUrl} alt="" onPointerDown={(e) => { e.stopPropagation(); setDragUnit(true); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ position: 'absolute', left: `${unitPosition.x * 100}%`, top: `${unitPosition.y * 100}%`, width: `${unitWidth * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)`, touchAction: 'none' }} />}
-      {copies.map((copy) => <div key={copy.i} className="unit-copy-clip" style={{ left: `${copy.cx * 100}%`, top: `${copy.cy * 100}%`, width: `${projected * 100}%`, clipPath: copy.fraction < 1 ? `inset(0 ${(1-copy.fraction)*100}% 0 0)` : undefined, transform: `translate(-50%,-50%) rotate(${axisAngle}rad)` }}>
+      {a && <button type="button" className="endpoint" aria-label={t.endpointA} onPointerDown={(e) => { e.stopPropagation(); setDragPoint(0); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%` }} />}
+      {b && <button type="button" className="endpoint" aria-label={t.endpointB} onPointerDown={(e) => { e.stopPropagation(); setDragPoint(1); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%` }} />}
+      {a && b && <span className="measure-line" aria-hidden="true" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${distance * 100}%`, transform: `rotate(${axisAngle}rad)` }} />}
+      {!confirmed && a && b && !repeated && <button type="button" className="unit-drag-handle" aria-label={t.unitHandle} onPointerDown={(e) => { e.stopPropagation(); setDragUnit(true); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${unitPosition.x * 100}%`, top: `${unitPosition.y * 100}%`, width: `${unitWidth * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }}><img src={unit.imageDataUrl} alt="" /></button>}
+      {copies.map((copy) => <div key={copy.i} className="unit-copy-clip" aria-hidden="true" style={{ left: `${copy.cx * 100}%`, top: `${copy.cy * 100}%`, width: `${projected * 100}%`, clipPath: copy.fraction < 1 ? `inset(0 ${(1-copy.fraction)*100}% 0 0)` : undefined, transform: `translate(-50%,-50%) rotate(${axisAngle}rad)` }}>
         <img src={unit.imageDataUrl} alt="" style={{ width: `${unitWidth / Math.max(projected, 1e-9) * 100}%`, transform: `rotate(${rotation - axisAngle * 180 / Math.PI}deg)` }}/>
       </div>)}
     </div>
 
     {!confirmed && points.length === 2 && <>
-      <label className="range-label">{t.scale}<input type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={(e) => { setScale(Number(e.target.value)); setRepeated(false) }}/></label>
-      <label className="range-label">{t.rotation}<input type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setRepeated(false) }}/></label>
+      <label className="range-label">{t.scale}<input aria-label={t.scale} type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={(e) => { setScale(Number(e.target.value)); setRepeated(false) }}/></label>
+      <label className="range-label">{t.rotation}<input aria-label={t.rotation} type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setRepeated(false) }}/></label>
       {!repeated ? <button className="primary-button" onClick={() => setRepeated(true)}>{t.repeat}</button> : <button className="primary-button" onClick={() => { setConfirmed(true); setSaveState('idle') }}>{t.confirm}</button>}
     </>}
-    {points.length === 2 && repeated && <div className="result-card"><img src={unit.imageDataUrl} alt=""/><strong>× {value.toFixed(1)}</strong></div>}
+    {points.length === 2 && repeated && <div className="result-card" aria-live="polite"><img src={unit.imageDataUrl} alt=""/><strong>× {value.toFixed(1)}</strong></div>}
     {confirmed && <div className="confirmed-actions">
       <button className="primary-button" onClick={() => void saveConfirmed()}>{t.save}</button>
-      {saveState === 'saved' && <p className="success-copy">{t.saved}</p>}
-      {saveState === 'error' && <p className="error-copy">{t.saveFailed}</p>}
+      {saveState === 'saved' && <p className="success-copy" role="status">{t.saved}</p>}
+      {saveState === 'error' && <p className="error-copy" role="alert">{t.saveFailed}</p>}
       <button className="secondary-button" onClick={() => { setConfirmed(false); setRepeated(true); setSaveState('idle') }}>{t.remeasure}</button>
     </div>}
   </main>
