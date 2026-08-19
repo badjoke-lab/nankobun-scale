@@ -14,18 +14,20 @@ type Props = {
 
 const copy = {
   ja: {
-    capture: '測る基準にしたいものを用意してください', camera: '撮影する', library: '写真から選ぶ',
+    capture: '測る基準にしたいものを用意してください', camera: '撮影する', library: '写真から選ぶ', close: '閉じる',
     choose: '使いたい部分を囲んでください', chooseHelp: '画像の上を順番にタップして、使いたい部分を囲みます。',
     undo: '1点戻す', reset: 'やり直す', next: '確認する', confirm: 'この部分を使いますか？', use: '使う', reselect: '選び直す',
     whatNext: 'この画像をどうしますか？', measure: 'これで測る', save: '保存する', name: '名前をつける（任意）', optional: '空欄のままでも保存できます',
     saved: '保存しました', home: 'ホームへ', invalid: '3点以上で囲んでください', failed: '保存できませんでした。もう一度お試しください。',
+    readFailed: '画像を読み込めませんでした。別の画像を選ぶか、もう一度お試しください。', back: '戻る', selectionLabel: '使う範囲を指定する画像',
   },
   en: {
-    capture: 'Choose what you want to measure with', camera: 'Take photo', library: 'Choose photo',
+    capture: 'Choose what you want to measure with', camera: 'Take photo', library: 'Choose photo', close: 'Close',
     choose: 'Outline the part you want to use', chooseHelp: 'Tap around the part you want to use.',
     undo: 'Undo point', reset: 'Start over', next: 'Review', confirm: 'Use this part?', use: 'Use', reselect: 'Choose again',
     whatNext: 'What would you like to do with this image?', measure: 'Measure with this', save: 'Save', name: 'Add a name (optional)', optional: 'You can save it without a name',
     saved: 'Saved', home: 'Home', invalid: 'Use at least 3 points to outline the part', failed: 'Couldn’t save. Please try again.',
+    readFailed: 'Couldn’t load that image. Choose another image or try again.', back: 'Back', selectionLabel: 'Image used to define the photographed unit',
   },
 } as const
 
@@ -71,10 +73,14 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
 
   const chooseFile = (file?: File) => {
     if (!file) return
+    setMessage('')
     const reader = new FileReader()
     reader.onload = () => {
-      setSource(String(reader.result)); setPolygon([]); setMasked(null); setSavedUnit(null); setMessage(''); setStep('select')
+      const result = typeof reader.result === 'string' ? reader.result : null
+      if (!result) { setMessage(t.readFailed); return }
+      setSource(result); setPolygon([]); setMasked(null); setSavedUnit(null); setStep('select')
     }
+    reader.onerror = () => setMessage(t.readFailed)
     reader.readAsDataURL(file)
   }
 
@@ -90,8 +96,12 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
 
   const review = async () => {
     if (!source || polygon.length < 3) { setMessage(t.invalid); return }
-    setMasked(await makeMaskedImage(source, polygon))
-    setStep('confirm')
+    try {
+      setMasked(await makeMaskedImage(source, polygon))
+      setStep('confirm')
+    } catch {
+      setMessage(t.readFailed)
+    }
   }
 
   const makeUnit = (): SavedUnit => ({
@@ -109,30 +119,32 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
   }
 
   if (step === 'capture') return <main className="camera-screen source-choice-screen">
-    <button className="ghost-button top-left" onClick={onClose}>←</button>
-    <div className="camera-copy">{t.capture}</div>
+    <button className="ghost-button top-left" aria-label={t.close} onClick={onClose}>←</button>
+    <div className="camera-copy" role="heading" aria-level={1}>{t.capture}</div>
     <div className="source-choice-actions">
       <button className="primary-button" onClick={() => cameraInput.current?.click()}>{t.camera}</button>
       <button className="secondary-button" onClick={() => libraryInput.current?.click()}>{t.library}</button>
+      {message && <p className="error-copy" role="alert">{message}</p>}
     </div>
-    <input ref={cameraInput} className="hidden-file-input" type="file" accept="image/*" capture="environment" onChange={(e) => chooseFile(e.target.files?.[0])} />
-    <input ref={libraryInput} className="hidden-file-input" type="file" accept="image/*" onChange={(e) => chooseFile(e.target.files?.[0])} />
+    <input ref={cameraInput} className="hidden-file-input" type="file" accept="image/*" capture="environment" aria-label={t.camera} onChange={(e) => chooseFile(e.target.files?.[0])} />
+    <input ref={libraryInput} className="hidden-file-input" type="file" accept="image/*" aria-label={t.library} onChange={(e) => chooseFile(e.target.files?.[0])} />
   </main>
 
   if (step === 'select' && source) {
     const points = polygon.map((p) => `${p.x * 100},${p.y * 100}`).join(' ')
     return <main className="editor-screen">
+      <button className="text-button" onClick={() => { setStep('capture'); setMessage('') }}>← {t.back}</button>
       <h2>{t.choose}</h2><p className="muted">{t.chooseHelp}</p>
-      <div className="selection-stage" onPointerDown={addPoint}>
+      <div className="selection-stage" role="img" aria-label={t.selectionLabel} onPointerDown={addPoint}>
         <img src={source} alt="" draggable={false} />
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {polygon.length > 1 && <polyline points={points} fill={polygon.length >= 3 ? 'rgba(255,210,26,.22)' : 'none'} stroke="#ffd21a" strokeWidth="1.2" />}
           {polygon.map((p, i) => <circle key={i} cx={p.x * 100} cy={p.y * 100} r="1.6" fill="#ffd21a" />)}
         </svg>
       </div>
-      {message && <p className="error-copy">{message}</p>}
-      <div className="button-row"><button onClick={() => setPolygon((p) => p.slice(0,-1))}>{t.undo}</button><button onClick={() => setPolygon([])}>{t.reset}</button></div>
-      <button className="primary-button" onClick={review}>{t.next}</button>
+      {message && <p className="error-copy" role="alert">{message}</p>}
+      <div className="button-row"><button disabled={polygon.length === 0} onClick={() => setPolygon((p) => p.slice(0,-1))}>{t.undo}</button><button disabled={polygon.length === 0} onClick={() => setPolygon([])}>{t.reset}</button></div>
+      <button className="primary-button" disabled={polygon.length < 3} onClick={() => void review()}>{t.next}</button>
     </main>
   }
 
@@ -149,7 +161,7 @@ export function UnitCreator({ locale, onClose, onReadyToMeasure, onSaved }: Prop
   if (step === 'save' && masked) return <main className="editor-screen center-content">
     <div className="cutout-preview checker"><img src={masked} alt="" /></div>
     <label className="field-label">{t.name}<input value={name} onChange={(e) => setName(e.target.value)} /></label><p className="muted">{t.optional}</p>
-    {message && <p className="error-copy">{message}</p>}<button className="primary-button" onClick={save}>{t.save}</button><button className="text-button" onClick={() => setStep('branch')}>←</button>
+    {message && <p className="error-copy" role="alert">{message}</p>}<button className="primary-button" onClick={() => void save()}>{t.save}</button><button className="text-button" aria-label={t.back} onClick={() => setStep('branch')}>← {t.back}</button>
   </main>
 
   return <main className="editor-screen center-content">
