@@ -129,7 +129,7 @@ Core flows remain understandable and recoverable on supported mobile browsers.
 
 ## Gate 8 — Ordinary cm / inch measurement
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - capability detection
@@ -146,13 +146,21 @@ This secondary feature must not block or destabilize the photographed-unit core.
 
 ## Gate 9 — Device QA
 
-Status: **Not started**
+Status: **In progress**
 
 Target end-to-end flows on current iPhone Safari and Android Chrome:
 
 capture or choose existing image → select → use/save branch → reuse → length fraction → area fractions → confirmation lock → display adjustment → export → save → reopen → remeasure from history → language switch
 
 Ordinary cm/inch is additionally tested on devices/browsers that report and successfully start the required immersive-AR hit-test path; unsupported devices must show the unavailable path rather than fabricate a measurement.
+
+Gate 9 exit condition:
+- the full photographed-unit path is exercised on both target mobile browser families
+- capture and existing-image selection are verified separately
+- touch interactions for endpoints, area outline, transform/origin, and history/remeasurement are usable on-device
+- export/save/reopen and language switching work without corrupting measurement state
+- unsupported ordinary measurement fails closed
+- reproducible defects found by device QA are fixed and pass exact-head CI
 
 ## Gate 10 — Publication audit
 
