@@ -1,5 +1,5 @@
 import React from 'react'
-import type { SavedUnit } from './storage'
+import { saveMeasurement, type SavedUnit } from './storage'
 
 type Locale = 'ja' | 'en'
 type Point = { x: number; y: number }
@@ -18,12 +18,13 @@ const copy = {
     back: '戻る', outline: '測りたい範囲を囲む', freehand: '指で囲む', polygon: '点で囲む', reset: 'やり直す',
     adjust: '撮ったものの大きさや向きを決めてください', fill: '敷きつめる', confirm: 'この測定で決定',
     remeasure: '測り直す', scale: '大きさ', rotation: '向き', result: '測定結果', invalid: '測る範囲を囲み直してください',
-    approx: '約', pieces: '個分',
+    approx: '約', pieces: '個分', save: '保存', saved: '保存しました', saveFailed: '保存できませんでした',
   },
   en: {
     back: 'Back', outline: 'Outline the area to measure', freehand: 'Draw around it', polygon: 'Place points', reset: 'Start over',
     adjust: 'Set the size and angle', fill: 'Fill area', confirm: 'Confirm measurement', remeasure: 'Measure again',
     scale: 'Size', rotation: 'Angle', result: 'Result', invalid: 'Please outline the area again', approx: 'About', pieces: 'of these',
+    save: 'Save', saved: 'Saved', saveFailed: 'Couldn’t save',
   },
 } as const
 
@@ -139,6 +140,7 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   const [dragOrigin, setDragOrigin] = React.useState(false)
   const [filled, setFilled] = React.useState(false)
   const [confirmed, setConfirmed] = React.useState(false)
+  const [saveState, setSaveState] = React.useState<'idle' | 'saved' | 'error'>('idle')
   const [unitAspect, setUnitAspect] = React.useState(1)
   const [targetAspect, setTargetAspect] = React.useState(1)
   const [value, setValue] = React.useState(0)
@@ -183,6 +185,27 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   const tiles = filled ? makeTiles(origin, scale, unitAspect, targetAspect, rotation) : []
   const polygonCss = region.map((p) => `${p.x * 100}% ${p.y * 100}%`).join(',')
 
+  const saveConfirmed = async () => {
+    if (!confirmed) return
+    setSaveState('idle')
+    try {
+      await saveMeasurement({
+        id: crypto.randomUUID(),
+        mode: 'area',
+        resultValue: value,
+        createdAt: new Date().toISOString(),
+        unitId: unit.id,
+        unitName: unit.name,
+        unitImageDataUrl: unit.imageDataUrl,
+        targetImageDataUrl: target,
+        geometry: { mode: 'area', region: [...region], unitScale: scale, unitRotation: rotation, tilingOrigin: origin, targetAspect },
+      })
+      setSaveState('saved')
+    } catch {
+      setSaveState('error')
+    }
+  }
+
   return <main className="editor-screen area-screen">
     <button className="text-button" onClick={onClose}>← {t.back}</button>
     <h2>{confirmed ? t.result : regionDone ? t.adjust : t.outline}</h2>
@@ -209,10 +232,15 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
     {regionDone && !confirmed && <>
       <label className="range-label">{t.scale}<input type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={(e) => { setScale(Number(e.target.value)); setFilled(false) }} /></label>
       <label className="range-label">{t.rotation}<input type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setFilled(false) }} /></label>
-      {!filled ? <button className="primary-button" onClick={() => setFilled(true)}>{t.fill}</button> : <button className="primary-button" onClick={() => setConfirmed(true)}>{t.confirm}</button>}
+      {!filled ? <button className="primary-button" onClick={() => setFilled(true)}>{t.fill}</button> : <button className="primary-button" onClick={() => { setConfirmed(true); setSaveState('idle') }}>{t.confirm}</button>}
     </>}
 
     {filled && <div className="result-card"><img src={unit.imageDataUrl} alt="" /><strong>× {value.toFixed(1)}</strong><span>{locale === 'ja' ? `${t.approx}${value.toFixed(1)}${t.pieces}` : `${t.approx} ${value.toFixed(1)} ${t.pieces}`}</span></div>}
-    {confirmed && <button className="secondary-button" onClick={() => { setConfirmed(false); setFilled(true) }}>{t.remeasure}</button>}
+    {confirmed && <div className="confirmed-actions">
+      <button className="primary-button" onClick={() => void saveConfirmed()}>{t.save}</button>
+      {saveState === 'saved' && <p className="success-copy">{t.saved}</p>}
+      {saveState === 'error' && <p className="error-copy">{t.saveFailed}</p>}
+      <button className="secondary-button" onClick={() => { setConfirmed(false); setFilled(true); setSaveState('idle') }}>{t.remeasure}</button>
+    </div>}
   </main>
 }
