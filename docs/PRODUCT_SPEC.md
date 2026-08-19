@@ -8,15 +8,30 @@ Primary concept: **好きなものを、ものさしに。**
 
 The arbitrary photographed-unit workflow is the primary product. Ordinary cm/mm/inch measurement is secondary.
 
+## Image sources
+
+Both sides of an arbitrary-unit measurement support either a newly captured photo or an existing image already stored on the user's device.
+
+For the photographed unit, the user can:
+- take a new photo
+- choose an existing image from the device photo library/files and define the usable region
+- reuse a photographed unit previously saved inside NANKOBUN SCALE through **「これで測る」**
+
+For the measurement target, the user can:
+- take a new photo
+- choose an existing image from the device photo library/files
+
+Taking a new photo is never required merely because the workflow starts from a camera-oriented screen. The source choice must remain explicit and usable on supported devices.
+
 ## Core user flow
 
 1. Start with **「撮ったもので測る」**.
-2. Photograph what you want to measure with.
+2. Choose whether to take a new image for the unit or use an existing image from the device. A unit already saved inside NANKOBUN SCALE can instead be reused through **「これで測る」**.
 3. Use **「使いたい部分を囲んでください」** to define the image region to use.
 4. Confirm with **「この部分を使いますか？」**.
 5. Choose whether to **「これで測る」** now or **「保存する」** for later.
 6. Saving never forces the user directly into measurement.
-7. To measure, photograph the target and choose **「長さ」** or **「面積」**.
+7. To measure, choose whether to take a new target photo or use an existing image from the device, then choose **「長さ」** or **「面積」**.
 8. The user explicitly defines the length endpoints or target area. The app does not guess the intended object.
 9. The photographed unit may be moved, uniformly scaled, and rotated before measurement confirmation.
 10. The result is displayed primarily as `[unit image] × N.N`, with localized supplemental text.
@@ -27,10 +42,12 @@ The arbitrary photographed-unit workflow is the primary product. Ordinary cm/mm/
 - Naming is optional and user-controlled.
 - The app does not automatically assign semantic object names.
 - Saved units can be reused later through **「これで測る」**.
+- An existing device image can also be newly registered as a photographed unit; taking another photo is not required.
 - Editing or deleting a saved unit must not alter already-confirmed historical measurements.
 
 ## Length measurement
 
+- The target may come from a new camera capture or an existing device image.
 - The user taps the two endpoints of the length to measure.
 - The selected photographed unit is placed over the target image.
 - Before confirmation, the user may move, uniformly scale, and rotate the unit.
@@ -41,6 +58,7 @@ The arbitrary photographed-unit workflow is the primary product. Ordinary cm/mm/
 
 ## Area measurement
 
+- The target may come from a new camera capture or an existing device image.
 - The user defines the target area by freehand outline or polygon points.
 - The photographed unit can be moved, uniformly scaled, and rotated before confirmation.
 - **「敷きつめる」** repeats the unit over the selected region with zero measurement spacing.
