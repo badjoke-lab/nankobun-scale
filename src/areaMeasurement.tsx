@@ -18,13 +18,17 @@ const copy = {
     back: '戻る', outline: '測りたい範囲を囲む', freehand: '指で囲む', polygon: '点で囲む', reset: 'やり直す',
     adjust: '撮ったものの大きさや向きを決めてください', fill: '敷きつめる', confirm: 'この測定で決定',
     remeasure: '測り直す', scale: '大きさ', rotation: '向き', result: '測定結果', invalid: '測る範囲を囲み直してください',
+    crossing: '線が交差しています。範囲を囲み直してください', imageFailed: '画像を読み込めませんでした。戻って別の画像をお試しください。',
     approx: '約', pieces: '個分', save: '保存', saved: '保存しました', saveFailed: '保存できませんでした',
+    areaStage: '測る範囲を指定する画像', origin: '敷きつめる基準位置',
   },
   en: {
     back: 'Back', outline: 'Outline the area to measure', freehand: 'Draw around it', polygon: 'Place points', reset: 'Start over',
     adjust: 'Set the size and angle', fill: 'Fill area', confirm: 'Confirm measurement', remeasure: 'Measure again',
-    scale: 'Size', rotation: 'Angle', result: 'Result', invalid: 'Please outline the area again', approx: 'About', pieces: 'of these',
-    save: 'Save', saved: 'Saved', saveFailed: 'Couldn’t save',
+    scale: 'Size', rotation: 'Angle', result: 'Result', invalid: 'Please outline the area again',
+    crossing: 'The outline crosses itself. Please draw it again', imageFailed: 'Couldn’t load the image. Go back and try another image.',
+    approx: 'About', pieces: 'of these', save: 'Save', saved: 'Saved', saveFailed: 'Couldn’t save',
+    areaStage: 'Image for outlining the area to measure', origin: 'Tiling origin',
   },
 } as const
 
@@ -36,6 +40,28 @@ function polygonArea(points: Point[]) {
     area += a.x * b.y - b.x * a.y
   }
   return Math.abs(area) / 2
+}
+
+function orient(a: Point, b: Point, c: Point) {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+function segmentsCross(a: Point, b: Point, c: Point, d: Point) {
+  const abC = orient(a, b, c), abD = orient(a, b, d), cdA = orient(c, d, a), cdB = orient(c, d, b)
+  return abC * abD < 0 && cdA * cdB < 0
+}
+
+function selfIntersects(points: Point[]) {
+  if (points.length < 4) return false
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length]
+    for (let j = i + 1; j < points.length; j++) {
+      if (j === i || j === i + 1 || (i === 0 && j === points.length - 1)) continue
+      const c = points[j], d = points[(j + 1) % points.length]
+      if (segmentsCross(a, b, c, d)) return true
+    }
+  }
+  return false
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -59,11 +85,7 @@ async function imageMeta(src: string) {
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
   let alpha = 0
   for (let i = 3; i < data.length; i += 4) alpha += data[i] / 255
-  return {
-    image,
-    effectiveRatio: alpha / (canvas.width * canvas.height),
-    aspect: image.naturalHeight / image.naturalWidth,
-  }
+  return { image, effectiveRatio: alpha / (canvas.width * canvas.height), aspect: image.naturalHeight / image.naturalWidth }
 }
 
 function makeTiles(origin: Point, scale: number, unitAspect: number, targetAspect: number, rotation: number): Tile[] {
@@ -76,52 +98,35 @@ function makeTiles(origin: Point, scale: number, unitAspect: number, targetAspec
   const extent = Math.ceil(2.5 / minStep) + 2
   const result: Tile[] = []
   let index = 0
-  for (let row = -extent; row <= extent; row++) {
-    for (let col = -extent; col <= extent; col++) {
-      const x = origin.x + col * ux + row * vx
-      const y = origin.y + col * uy + row * vy
-      if (x > -0.8 && x < 1.8 && y > -0.8 && y < 1.8) result.push({ index: index++, x, y })
-    }
+  for (let row = -extent; row <= extent; row++) for (let col = -extent; col <= extent; col++) {
+    const x = origin.x + col * ux + row * vx
+    const y = origin.y + col * uy + row * vy
+    if (x > -0.8 && x < 1.8 && y > -0.8 && y < 1.8) result.push({ index: index++, x, y })
   }
   return result
 }
 
-async function calculateAreaContribution(
-  region: Point[], unitSrc: string, origin: Point, scale: number, rotation: number, targetAspect: number,
-): Promise<number> {
+async function calculateAreaContribution(region: Point[], unitSrc: string, origin: Point, scale: number, rotation: number, targetAspect: number): Promise<number> {
   if (region.length < 3) return 0
   const unit = await imageMeta(unitSrc)
   const width = 384
   const height = Math.max(1, Math.round(width * targetAspect))
   const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
+  canvas.width = width; canvas.height = height
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!
   const tileWidth = scale * width
   const tileHeight = tileWidth * unit.aspect
   const denominator = Math.max(1e-6, tileWidth * tileHeight * unit.effectiveRatio)
   const tiles = makeTiles(origin, scale, unit.aspect, targetAspect, rotation)
-
-  ctx.save()
-  ctx.beginPath()
-  region.forEach((p, i) => {
-    const x = p.x * width, y = p.y * height
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  })
-  ctx.closePath()
-  ctx.clip()
-
+  ctx.save(); ctx.beginPath()
+  region.forEach((p, i) => { const x = p.x * width, y = p.y * height; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) })
+  ctx.closePath(); ctx.clip()
   const theta = rotation * Math.PI / 180
   for (const tile of tiles) {
-    ctx.save()
-    ctx.translate(tile.x * width, tile.y * height)
-    ctx.rotate(theta)
-    ctx.drawImage(unit.image, -tileWidth / 2, -tileHeight / 2, tileWidth, tileHeight)
-    ctx.restore()
+    ctx.save(); ctx.translate(tile.x * width, tile.y * height); ctx.rotate(theta)
+    ctx.drawImage(unit.image, -tileWidth / 2, -tileHeight / 2, tileWidth, tileHeight); ctx.restore()
   }
   ctx.restore()
-
   const data = ctx.getImageData(0, 0, width, height).data
   let coveredAlpha = 0
   for (let i = 3; i < data.length; i += 4) coveredAlpha += data[i] / 255
@@ -144,18 +149,19 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   const [unitAspect, setUnitAspect] = React.useState(1)
   const [targetAspect, setTargetAspect] = React.useState(1)
   const [value, setValue] = React.useState(0)
+  const [imageError, setImageError] = React.useState(false)
 
-  React.useEffect(() => { void imageMeta(unit.imageDataUrl).then((m) => setUnitAspect(m.aspect)) }, [unit.imageDataUrl])
-  React.useEffect(() => { void loadImage(target).then((img) => setTargetAspect(img.naturalHeight / img.naturalWidth)) }, [target])
+  React.useEffect(() => { void imageMeta(unit.imageDataUrl).then((m) => setUnitAspect(m.aspect)).catch(() => setImageError(true)) }, [unit.imageDataUrl])
+  React.useEffect(() => { void loadImage(target).then((img) => setTargetAspect(img.naturalHeight / img.naturalWidth)).catch(() => setImageError(true)) }, [target])
 
   React.useEffect(() => {
     let cancelled = false
-    if (!filled) return
-    void calculateAreaContribution(region, unit.imageDataUrl, origin, scale, rotation, targetAspect).then((next) => {
-      if (!cancelled) setValue(next)
-    })
+    if (!filled || imageError) return
+    void calculateAreaContribution(region, unit.imageDataUrl, origin, scale, rotation, targetAspect)
+      .then((next) => { if (!cancelled) setValue(next) })
+      .catch(() => { if (!cancelled) setImageError(true) })
     return () => { cancelled = true }
-  }, [filled, origin, region, rotation, scale, targetAspect, unit.imageDataUrl])
+  }, [filled, imageError, origin, region, rotation, scale, targetAspect, unit.imageDataUrl])
 
   const norm = (event: React.PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -163,16 +169,14 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   }
 
   const down = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (confirmed) return
-    if (regionDone) {
-      setDragOrigin(true); setOrigin(norm(event)); setFilled(false); return
-    }
+    if (confirmed || imageError) return
+    if (regionDone) { setDragOrigin(true); setOrigin(norm(event)); setFilled(false); event.currentTarget.setPointerCapture(event.pointerId); return }
     if (mode === 'polygon') { setRegion((old) => [...old, norm(event)]); return }
     setDrawing(true); setRegion([norm(event)]); event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const move = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (confirmed) return
+    if (confirmed || imageError) return
     if (dragOrigin && regionDone) { setOrigin(norm(event)); setFilled(false); return }
     if (drawing && mode === 'freehand') {
       const next = norm(event)
@@ -181,7 +185,8 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   }
 
   const up = () => { setDrawing(false); setDragOrigin(false) }
-  const valid = region.length >= 3 && polygonArea(region) > 0.002
+  const crossing = selfIntersects(region)
+  const valid = region.length >= 3 && polygonArea(region) > 0.002 && !crossing
   const tiles = filled ? makeTiles(origin, scale, unitAspect, targetAspect, rotation) : []
   const polygonCss = region.map((p) => `${p.x * 100}% ${p.y * 100}%`).join(',')
 
@@ -189,57 +194,48 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
     if (!confirmed) return
     setSaveState('idle')
     try {
-      await saveMeasurement({
-        id: crypto.randomUUID(),
-        mode: 'area',
-        resultValue: value,
-        createdAt: new Date().toISOString(),
-        unitId: unit.id,
-        unitName: unit.name,
-        unitImageDataUrl: unit.imageDataUrl,
-        targetImageDataUrl: target,
-        geometry: { mode: 'area', region: [...region], unitScale: scale, unitRotation: rotation, tilingOrigin: origin, targetAspect },
-      })
+      await saveMeasurement({ id: crypto.randomUUID(), mode: 'area', resultValue: value, createdAt: new Date().toISOString(), unitId: unit.id, unitName: unit.name, unitImageDataUrl: unit.imageDataUrl, targetImageDataUrl: target, geometry: { mode: 'area', region: [...region], unitScale: scale, unitRotation: rotation, tilingOrigin: origin, targetAspect } })
       setSaveState('saved')
-    } catch {
-      setSaveState('error')
-    }
+    } catch { setSaveState('error') }
   }
 
+  if (imageError) return <main className="editor-screen center-content">
+    <p className="error-copy" role="alert">{t.imageFailed}</p>
+    <button className="primary-button" onClick={onClose}>{t.back}</button>
+  </main>
+
   return <main className="editor-screen area-screen">
-    <button className="text-button" onClick={onClose}>← {t.back}</button>
+    <button className="text-button" onClick={onClose} aria-label={t.back}>← {t.back}</button>
     <h2>{confirmed ? t.result : regionDone ? t.adjust : t.outline}</h2>
 
-    {!regionDone && <div className="button-row">
-      <button className={mode === 'freehand' ? 'selected-option' : ''} onClick={() => { setMode('freehand'); setRegion([]) }}>{t.freehand}</button>
-      <button className={mode === 'polygon' ? 'selected-option' : ''} onClick={() => { setMode('polygon'); setRegion([]) }}>{t.polygon}</button>
+    {!regionDone && <div className="button-row" role="group" aria-label={t.outline}>
+      <button aria-pressed={mode === 'freehand'} className={mode === 'freehand' ? 'selected-option' : ''} onClick={() => { setMode('freehand'); setRegion([]) }}>{t.freehand}</button>
+      <button aria-pressed={mode === 'polygon'} className={mode === 'polygon' ? 'selected-option' : ''} onClick={() => { setMode('polygon'); setRegion([]) }}>{t.polygon}</button>
     </div>}
 
-    <div className="area-stage" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+    <div className="area-stage" role="application" aria-label={t.areaStage} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
       <img src={target} alt="" draggable={false} />
       {region.length > 1 && <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points={region.map((p) => `${p.x * 100},${p.y * 100}`).join(' ')} fill="rgba(255,210,26,.16)" stroke="#ffd21a" strokeWidth="1" /></svg>}
-      {filled && valid && <div className="tile-layer" style={{ clipPath: `polygon(${polygonCss})` }}>
-        {tiles.map((tile) => <img key={tile.index} src={unit.imageDataUrl} alt="" style={{ left: `${tile.x * 100}%`, top: `${tile.y * 100}%`, width: `${scale * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }} />)}
-      </div>}
-      {regionDone && !confirmed && !filled && <img className="area-origin-unit" src={unit.imageDataUrl} alt="" style={{ left: `${origin.x * 100}%`, top: `${origin.y * 100}%`, width: `${scale * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }} />}
+      {filled && valid && <div className="tile-layer" style={{ clipPath: `polygon(${polygonCss})` }} aria-hidden="true">{tiles.map((tile) => <img key={tile.index} src={unit.imageDataUrl} alt="" style={{ left: `${tile.x * 100}%`, top: `${tile.y * 100}%`, width: `${scale * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }} />)}</div>}
+      {regionDone && !confirmed && !filled && <img className="area-origin-unit" src={unit.imageDataUrl} alt={t.origin} style={{ left: `${origin.x * 100}%`, top: `${origin.y * 100}%`, width: `${scale * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)` }} />}
     </div>
 
     {!regionDone && <>
-      {!valid && region.length > 0 && <p className="error-copy">{t.invalid}</p>}
-      <div className="button-row"><button onClick={() => setRegion([])}>{t.reset}</button><button disabled={!valid} onClick={() => setRegionDone(true)}>{t.adjust}</button></div>
+      {region.length > 0 && !valid && <p className="error-copy" role="alert">{crossing ? t.crossing : t.invalid}</p>}
+      <div className="button-row"><button disabled={region.length === 0} onClick={() => setRegion([])}>{t.reset}</button><button disabled={!valid} onClick={() => setRegionDone(true)}>{t.adjust}</button></div>
     </>}
 
     {regionDone && !confirmed && <>
-      <label className="range-label">{t.scale}<input type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={(e) => { setScale(Number(e.target.value)); setFilled(false) }} /></label>
-      <label className="range-label">{t.rotation}<input type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setFilled(false) }} /></label>
+      <label className="range-label">{t.scale}<input aria-label={t.scale} type="range" min="0.05" max="0.6" step="0.01" value={scale} onChange={(e) => { setScale(Number(e.target.value)); setFilled(false) }} /></label>
+      <label className="range-label">{t.rotation}<input aria-label={t.rotation} type="range" min="-180" max="180" step="1" value={rotation} onChange={(e) => { setRotation(Number(e.target.value)); setFilled(false) }} /></label>
       {!filled ? <button className="primary-button" onClick={() => setFilled(true)}>{t.fill}</button> : <button className="primary-button" onClick={() => { setConfirmed(true); setSaveState('idle') }}>{t.confirm}</button>}
     </>}
 
-    {filled && <div className="result-card"><img src={unit.imageDataUrl} alt="" /><strong>× {value.toFixed(1)}</strong><span>{locale === 'ja' ? `${t.approx}${value.toFixed(1)}${t.pieces}` : `${t.approx} ${value.toFixed(1)} ${t.pieces}`}</span></div>}
+    {filled && <div className="result-card" aria-live="polite"><img src={unit.imageDataUrl} alt="" /><strong>× {value.toFixed(1)}</strong><span>{locale === 'ja' ? `${t.approx}${value.toFixed(1)}${t.pieces}` : `${t.approx} ${value.toFixed(1)} ${t.pieces}`}</span></div>}
     {confirmed && <div className="confirmed-actions">
       <button className="primary-button" onClick={() => void saveConfirmed()}>{t.save}</button>
-      {saveState === 'saved' && <p className="success-copy">{t.saved}</p>}
-      {saveState === 'error' && <p className="error-copy">{t.saveFailed}</p>}
+      {saveState === 'saved' && <p className="success-copy" role="status">{t.saved}</p>}
+      {saveState === 'error' && <p className="error-copy" role="alert">{t.saveFailed}</p>}
       <button className="secondary-button" onClick={() => { setConfirmed(false); setFilled(true); setSaveState('idle') }}>{t.remeasure}</button>
     </div>}
   </main>
