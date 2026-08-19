@@ -97,22 +97,24 @@ Area results remain visually consistent with the selected area and confirmed mea
 
 ## Gate 6 — Results, export, and history
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - confirmed-result screen
 - presentation-only adjustments
 - **「測り直す」** flow
 - PNG / JPEG export
+- native share where supported
 - explicit history save
 - immutable historical result display
+- remeasurement from saved immutable snapshot into a new measurement
 
 Exit condition:
 A confirmed result can be made easier to read, exported, saved, reopened, and remeasured without rewriting the original measurement.
 
 ## Gate 7 — Language, accessibility, and failure handling
 
-Status: **Not started**
+Status: **In progress**
 
 Scope:
 - full Japanese / English coverage
@@ -143,7 +145,7 @@ Status: **Not started**
 
 Target end-to-end flows on current iPhone Safari and Android Chrome:
 
-capture or choose existing image → select → use/save branch → reuse → length fraction → area fractions → confirmation lock → display adjustment → export → save → reopen → language switch
+capture or choose existing image → select → use/save branch → reuse → length fraction → area fractions → confirmation lock → display adjustment → export → save → reopen → remeasure from history → language switch
 
 ## Gate 10 — Publication audit
 
