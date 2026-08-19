@@ -25,6 +25,7 @@ p { margin: 8px 0 0; font-size: 0.95rem; }
 h2 { margin: 0; font-size: 1.1rem; }
 .muted { color: #666; line-height: 1.5; }
 .error-copy { color: #b42318; font-weight: 700; }
+.success-copy { color: #157347; font-weight: 700; }
 
 .language-switch { display: flex; border: 1px solid #ddd; border-radius: 999px; overflow: hidden; }
 .language-switch button { border: 0; background: #fff; padding: 7px 10px; font-size: 0.78rem; }
@@ -82,6 +83,7 @@ h2 { margin: 0; font-size: 1.1rem; }
 .result-card { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 80px; border: 1px solid #e7e7e7; border-radius: 14px; padding: 12px; font-size: 1.35rem; flex-wrap: wrap; }
 .result-card img { width: 54px; height: 54px; object-fit: contain; }
 .result-card span { width: 100%; text-align: center; font-size: .85rem; color: #666; }
+.confirmed-actions { display: grid; gap: 10px; }
 
 .area-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
 .area-origin-unit { position: absolute; z-index: 4; max-height: 120px; object-fit: contain; pointer-events: none; }
@@ -94,4 +96,11 @@ h2 { margin: 0; font-size: 1.1rem; }
 .history-item span { display: grid; gap: 5px; }
 .history-item small, .history-result-card time { color: #666; }
 .history-result-card { display: grid; gap: 12px; }
-.history-target { width: 100%; max-height: 440px; object-fit: contain; border-radius: 14px; background: #050505; }
+.history-preview-wrap { position: relative; border-radius: 14px; overflow: hidden; background: #050505; }
+.history-target { display: block; width: 100%; max-height: 440px; object-fit: contain; background: #050505; }
+.history-preview-result { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.72); color: #fff; border-radius: 10px; padding: 8px 10px; }
+.history-preview-result img { width: 38px; height: 38px; object-fit: contain; }
+.presentation-panel { display: grid; gap: 14px; padding: 16px; border: 1px solid #e7e7e7; border-radius: 14px; }
+.toggle-row { display: flex; align-items: center; gap: 10px; min-height: 42px; font-weight: 650; }
+.toggle-row input { width: 20px; height: 20px; accent-color: #ffd21a; }
+.export-actions { display: grid; gap: 10px; }
