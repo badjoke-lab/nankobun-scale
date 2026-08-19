@@ -1,4 +1,5 @@
 import React from 'react'
+import './ordinaryMeasurement.css'
 
 type Locale = 'ja' | 'en'
 type Point3 = { x: number; y: number; z: number }
