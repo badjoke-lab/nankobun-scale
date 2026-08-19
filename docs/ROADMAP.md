@@ -50,7 +50,7 @@ The app shell loads reliably and the core screens can be reached with language s
 Status: **Complete**
 
 Scope:
-- photograph what to measure with
+- take a new unit photo or choose an existing device image
 - manually select the usable region
 - optional boundary assistance without making it mandatory
 - confirm selected region
@@ -59,17 +59,18 @@ Scope:
 - saved-unit reuse and editing
 
 Exit condition:
-A user can create a photographed unit, save it without being forced into measurement, and later reuse it through **「これで測る」**.
+A user can create a photographed unit from a new or existing image, save it without being forced into measurement, and later reuse it through **「これで測る」**.
 
 ## Gate 4 — Length measurement
 
 Status: **Complete**
 
 Scope:
-- target photography
+- take a new target photo or choose an existing device image
 - two-point endpoint selection
 - photographed-unit move / uniform scale / rotation
 - repeated placement with **「並べる」**
+- target-image aspect-correct geometry
 - live recalculation
 - fractional final-unit clipping
 - measurement confirmation lock
@@ -79,14 +80,15 @@ Integer and fractional length results render consistently and confirmed measurem
 
 ## Gate 5 — Area measurement
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - freehand and polygon target areas
 - photographed-unit transform and tiling origin
-- zero-spacing tiling
+- zero-spacing rotated tiling
 - boundary clipping
-- multiple fractional boundary contributions
+- multiple fractional boundary contributions using effective alpha area
+- target-image aspect-aware geometry
 - live recalculation
 - measurement confirmation lock
 
@@ -95,7 +97,7 @@ Area results remain visually consistent with the selected area and confirmed mea
 
 ## Gate 6 — Results, export, and history
 
-Status: **Not started**
+Status: **In progress**
 
 Scope:
 - confirmed-result screen
@@ -141,7 +143,7 @@ Status: **Not started**
 
 Target end-to-end flows on current iPhone Safari and Android Chrome:
 
-capture → select → use/save branch → reuse → length fraction → area fractions → confirmation lock → display adjustment → export → save → reopen → language switch
+capture or choose existing image → select → use/save branch → reuse → length fraction → area fractions → confirmation lock → display adjustment → export → save → reopen → language switch
 
 ## Gate 10 — Publication audit
 
