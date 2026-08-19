@@ -69,6 +69,7 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   const cameraInput = React.useRef<HTMLInputElement>(null)
   const libraryInput = React.useRef<HTMLInputElement>(null)
   const [target, setTarget] = React.useState<string | null>(null)
+  const [targetAspect, setTargetAspect] = React.useState(1)
   const [modeChosen, setModeChosen] = React.useState(false)
   const [points, setPoints] = React.useState<Point[]>([])
   const [scale, setScale] = React.useState(0.22)
@@ -85,6 +86,8 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   const chooseTarget = async (file?: File) => {
     const value = await readFile(file)
     if (!value) return
+    const image = await loadImage(value)
+    setTargetAspect(image.naturalHeight / Math.max(image.naturalWidth, 1))
     setTarget(value); setModeChosen(false); setPoints([]); setRepeated(false); setConfirmed(false)
   }
 
@@ -130,22 +133,23 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
 
   const a = points[0], b = points[1]
   const dx = a && b ? b.x - a.x : 0
-  const dy = a && b ? b.y - a.y : 0
+  const dy = a && b ? (b.y - a.y) * targetAspect : 0
   const distance = Math.hypot(dx, dy)
   const axisAngle = Math.atan2(dy, dx)
   const theta = rotation * Math.PI / 180
   const aspect = unitBounds.height / Math.max(unitBounds.width, 1)
-  const unitWidthNorm = scale
-  const unitHeightNorm = scale * aspect
-  const projected = Math.abs(unitWidthNorm * Math.cos(theta - axisAngle)) + Math.abs(unitHeightNorm * Math.sin(theta - axisAngle))
+  const unitWidth = scale
+  const unitHeight = scale * aspect
+  const projected = Math.abs(unitWidth * Math.cos(theta - axisAngle)) + Math.abs(unitHeight * Math.sin(theta - axisAngle))
   const value = projected > 0 ? distance / projected : 0
   const full = Math.floor(value)
   const fraction = Math.max(0, value - full)
 
   const copies = repeated && a && b ? Array.from({ length: full + (fraction > 0.0001 ? 1 : 0) }, (_, i) => {
     const start = i * projected
-    const cx = a.x + Math.cos(axisAngle) * (start + projected / 2)
-    const cy = a.y + Math.sin(axisAngle) * (start + projected / 2)
+    const centerDistance = start + projected / 2
+    const cx = a.x + Math.cos(axisAngle) * centerDistance
+    const cy = a.y + Math.sin(axisAngle) * centerDistance / Math.max(targetAspect, 1e-9)
     const isFraction = i === full && fraction > 0.0001
     return { i, cx, cy, fraction: isFraction ? fraction : 1 }
   }) : []
@@ -157,10 +161,10 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
       <img src={target} alt="" draggable={false}/>
       {a && <span className="endpoint" onPointerDown={(e) => { e.stopPropagation(); setDragPoint(0); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%` }} />}
       {b && <span className="endpoint" onPointerDown={(e) => { e.stopPropagation(); setDragPoint(1); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%` }} />}
-      {a && b && <span className="measure-line" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${distance * 100}%`, transform: `rotate(${axisAngle}rad)` }} />}
-      {!confirmed && a && b && !repeated && <img src={unit.imageDataUrl} alt="" onPointerDown={(e) => { e.stopPropagation(); setDragUnit(true); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ position: 'absolute', left: `${unitPosition.x * 100}%`, top: `${unitPosition.y * 100}%`, width: `${unitWidthNorm * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)`, touchAction: 'none' }} />}
-      {copies.map((copy) => <div key={copy.i} className="unit-copy-clip" style={{ left: `${copy.cx * 100}%`, top: `${copy.cy * 100}%`, width: `${projected * 100}%`, clipPath: copy.fraction < 1 ? `inset(0 ${(1-copy.fraction)*100}% 0 0)` : undefined, transform: `translate(-50%,-50%) rotate(${axisAngle}rad)` }}>
-        <img src={unit.imageDataUrl} alt="" style={{ width: `${unitWidthNorm / projected * 100}%`, transform: `rotate(${rotation - axisAngle * 180 / Math.PI}deg)` }}/>
+      {a && b && <span className="measure-line" style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${Math.hypot(b.x-a.x,b.y-a.y) * 100}%`, transform: `rotate(${Math.atan2(b.y-a.y,b.x-a.x)}rad)` }} />}
+      {!confirmed && a && b && !repeated && <img src={unit.imageDataUrl} alt="" onPointerDown={(e) => { e.stopPropagation(); setDragUnit(true); e.currentTarget.setPointerCapture(e.pointerId) }} style={{ position: 'absolute', left: `${unitPosition.x * 100}%`, top: `${unitPosition.y * 100}%`, width: `${unitWidth * 100}%`, transform: `translate(-50%,-50%) rotate(${rotation}deg)`, touchAction: 'none' }} />}
+      {copies.map((copy) => <div key={copy.i} className="unit-copy-clip" style={{ left: `${copy.cx * 100}%`, top: `${copy.cy * 100}%`, width: `${projected * 100}%`, clipPath: copy.fraction < 1 ? `inset(0 ${(1-copy.fraction)*100}% 0 0)` : undefined, transform: `translate(-50%,-50%) rotate(${Math.atan2((b!.y-a!.y),(b!.x-a!.x))}rad)` }}>
+        <img src={unit.imageDataUrl} alt="" style={{ width: `${unitWidth / Math.max(projected, 1e-9) * 100}%`, transform: `rotate(${rotation - Math.atan2((b!.y-a!.y),(b!.x-a!.x)) * 180 / Math.PI}deg)` }}/>
       </div>)}
     </div>
 
