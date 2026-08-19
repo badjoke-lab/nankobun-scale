@@ -114,7 +114,7 @@ A confirmed result can be made easier to read, exported, saved, reopened, and re
 
 ## Gate 7 — Language, accessibility, and failure handling
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 - full Japanese / English coverage
@@ -129,12 +129,17 @@ Core flows remain understandable and recoverable on supported mobile browsers.
 
 ## Gate 8 — Ordinary cm / inch measurement
 
-Status: **Not started**
+Status: **In progress**
 
 Scope:
 - capability detection
 - supported ordinary measurement flow
 - unavailable-state handling
+
+Implementation boundary:
+- use spatial tracking / real-world hit testing only where the browser and device expose a supported immersive-AR path
+- never infer physical centimeters or inches from an ordinary uncalibrated photo
+- if the required AR path cannot start, show an unavailable/failure state and leave arbitrary photographed-unit measurement fully usable
 
 Rule:
 This secondary feature must not block or destabilize the photographed-unit core.
@@ -146,6 +151,8 @@ Status: **Not started**
 Target end-to-end flows on current iPhone Safari and Android Chrome:
 
 capture or choose existing image → select → use/save branch → reuse → length fraction → area fractions → confirmation lock → display adjustment → export → save → reopen → remeasure from history → language switch
+
+Ordinary cm/inch is additionally tested on devices/browsers that report and successfully start the required immersive-AR hit-test path; unsupported devices must show the unavailable path rather than fabricate a measurement.
 
 ## Gate 10 — Publication audit
 
