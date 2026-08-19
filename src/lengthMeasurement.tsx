@@ -13,14 +13,16 @@ type Props = {
 
 const copy = {
   ja: {
-    capture: '測りたいものを撮ってください', chooseMode: 'どちらを測りますか？', length: '長さ', area: '面積',
-    endpoints: '測りたい長さの両端をタップ', adjust: '撮ったものの大きさや向きを決めてください', repeat: '並べる',
-    confirm: 'この測定で決定', remeasure: '測り直す', back: '戻る', scale: '大きさ', rotation: '向き', result: '測定結果',
+    capture: '測りたいものを用意してください', camera: '撮影する', library: '写真から選ぶ',
+    chooseMode: 'どちらを測りますか？', length: '長さ', area: '面積', endpoints: '測りたい長さの両端をタップ',
+    adjust: '撮ったものの大きさや向きを決めてください', repeat: '並べる', confirm: 'この測定で決定',
+    remeasure: '測り直す', back: '戻る', scale: '大きさ', rotation: '向き', result: '測定結果',
   },
   en: {
-    capture: 'Take a photo of what you want to measure', chooseMode: 'What do you want to measure?', length: 'Length', area: 'Area',
-    endpoints: 'Tap both ends of the length', adjust: 'Set the size and angle', repeat: 'Repeat', confirm: 'Confirm measurement',
-    remeasure: 'Measure again', back: 'Back', scale: 'Size', rotation: 'Angle', result: 'Result',
+    capture: 'Choose what you want to measure', camera: 'Take photo', library: 'Choose photo',
+    chooseMode: 'What do you want to measure?', length: 'Length', area: 'Area', endpoints: 'Tap both ends of the length',
+    adjust: 'Set the size and angle', repeat: 'Repeat', confirm: 'Confirm measurement', remeasure: 'Measure again',
+    back: 'Back', scale: 'Size', rotation: 'Angle', result: 'Result',
   },
 } as const
 
@@ -64,6 +66,8 @@ async function effectiveBounds(src: string): Promise<{ width: number; height: nu
 
 export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
   const t = copy[locale]
+  const cameraInput = React.useRef<HTMLInputElement>(null)
+  const libraryInput = React.useRef<HTMLInputElement>(null)
   const [target, setTarget] = React.useState<string | null>(null)
   const [modeChosen, setModeChosen] = React.useState(false)
   const [points, setPoints] = React.useState<Point[]>([])
@@ -105,10 +109,15 @@ export function LengthMeasurement({ locale, unit, onClose, onArea }: Props) {
     }
   }
 
-  if (!target) return <main className="camera-screen">
+  if (!target) return <main className="camera-screen source-choice-screen">
     <button className="ghost-button top-left" onClick={onClose}>←</button>
     <div className="camera-copy">{t.capture}</div>
-    <label className="shutter-file"><input type="file" accept="image/*" capture="environment" onChange={(e) => void chooseTarget(e.target.files?.[0])}/><span className="shutter" /></label>
+    <div className="source-choice-actions">
+      <button className="primary-button" onClick={() => cameraInput.current?.click()}>{t.camera}</button>
+      <button className="secondary-button" onClick={() => libraryInput.current?.click()}>{t.library}</button>
+    </div>
+    <input ref={cameraInput} className="hidden-file-input" type="file" accept="image/*" capture="environment" onChange={(e) => void chooseTarget(e.target.files?.[0])}/>
+    <input ref={libraryInput} className="hidden-file-input" type="file" accept="image/*" onChange={(e) => void chooseTarget(e.target.files?.[0])}/>
   </main>
 
   if (!modeChosen) return <main className="editor-screen center-content">
