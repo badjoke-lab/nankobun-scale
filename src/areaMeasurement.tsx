@@ -4,6 +4,7 @@ import type { SavedUnit } from './storage'
 type Locale = 'ja' | 'en'
 type Point = { x: number; y: number }
 type DrawMode = 'freehand' | 'polygon'
+type Tile = { index: number; x: number; y: number }
 
 type Props = {
   locale: Locale
@@ -36,17 +37,6 @@ function polygonArea(points: Point[]) {
   return Math.abs(area) / 2
 }
 
-function pointInPolygon(point: Point, polygon: Point[]) {
-  let inside = false
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const a = polygon[i], b = polygon[j]
-    const crosses = ((a.y > point.y) !== (b.y > point.y)) &&
-      point.x < (b.x - a.x) * (point.y - a.y) / ((b.y - a.y) || 1e-9) + a.x
-    if (crosses) inside = !inside
-  }
-  return inside
-}
-
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
@@ -56,7 +46,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-async function effectiveRatio(src: string) {
+async function imageMeta(src: string) {
   const image = await loadImage(src)
   const canvas = document.createElement('canvas')
   const max = 256
@@ -66,9 +56,75 @@ async function effectiveRatio(src: string) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
   const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
-  let solid = 0
-  for (let i = 3; i < data.length; i += 4) if (data[i] > 0) solid++
-  return { ratio: solid / (canvas.width * canvas.height), aspect: canvas.height / canvas.width }
+  let alpha = 0
+  for (let i = 3; i < data.length; i += 4) alpha += data[i] / 255
+  return {
+    image,
+    effectiveRatio: alpha / (canvas.width * canvas.height),
+    aspect: image.naturalHeight / image.naturalWidth,
+  }
+}
+
+function makeTiles(origin: Point, scale: number, unitAspect: number, targetAspect: number, rotation: number): Tile[] {
+  const theta = rotation * Math.PI / 180
+  const ux = scale * Math.cos(theta)
+  const uy = scale * Math.sin(theta) / targetAspect
+  const vx = -scale * unitAspect * Math.sin(theta)
+  const vy = scale * unitAspect * Math.cos(theta) / targetAspect
+  const minStep = Math.max(0.01, Math.min(scale, scale * unitAspect / targetAspect))
+  const extent = Math.ceil(2.5 / minStep) + 2
+  const result: Tile[] = []
+  let index = 0
+  for (let row = -extent; row <= extent; row++) {
+    for (let col = -extent; col <= extent; col++) {
+      const x = origin.x + col * ux + row * vx
+      const y = origin.y + col * uy + row * vy
+      if (x > -0.8 && x < 1.8 && y > -0.8 && y < 1.8) result.push({ index: index++, x, y })
+    }
+  }
+  return result
+}
+
+async function calculateAreaContribution(
+  region: Point[], unitSrc: string, origin: Point, scale: number, rotation: number, targetAspect: number,
+): Promise<number> {
+  if (region.length < 3) return 0
+  const unit = await imageMeta(unitSrc)
+  const width = 384
+  const height = Math.max(1, Math.round(width * targetAspect))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+  const tileWidth = scale * width
+  const tileHeight = tileWidth * unit.aspect
+  const denominator = Math.max(1e-6, tileWidth * tileHeight * unit.effectiveRatio)
+  const tiles = makeTiles(origin, scale, unit.aspect, targetAspect, rotation)
+
+  ctx.save()
+  ctx.beginPath()
+  region.forEach((p, i) => {
+    const x = p.x * width, y = p.y * height
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  })
+  ctx.closePath()
+  ctx.clip()
+
+  const theta = rotation * Math.PI / 180
+  for (const tile of tiles) {
+    ctx.save()
+    ctx.translate(tile.x * width, tile.y * height)
+    ctx.rotate(theta)
+    ctx.drawImage(unit.image, -tileWidth / 2, -tileHeight / 2, tileWidth, tileHeight)
+    ctx.restore()
+  }
+  ctx.restore()
+
+  const data = ctx.getImageData(0, 0, width, height).data
+  let coveredAlpha = 0
+  for (let i = 3; i < data.length; i += 4) coveredAlpha += data[i] / 255
+  return coveredAlpha / denominator
 }
 
 export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
@@ -83,9 +139,21 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   const [dragOrigin, setDragOrigin] = React.useState(false)
   const [filled, setFilled] = React.useState(false)
   const [confirmed, setConfirmed] = React.useState(false)
-  const [unitMeta, setUnitMeta] = React.useState({ ratio: 1, aspect: 1 })
+  const [unitAspect, setUnitAspect] = React.useState(1)
+  const [targetAspect, setTargetAspect] = React.useState(1)
+  const [value, setValue] = React.useState(0)
 
-  React.useEffect(() => { void effectiveRatio(unit.imageDataUrl).then(setUnitMeta) }, [unit.imageDataUrl])
+  React.useEffect(() => { void imageMeta(unit.imageDataUrl).then((m) => setUnitAspect(m.aspect)) }, [unit.imageDataUrl])
+  React.useEffect(() => { void loadImage(target).then((img) => setTargetAspect(img.naturalHeight / img.naturalWidth)) }, [target])
+
+  React.useEffect(() => {
+    let cancelled = false
+    if (!filled) return
+    void calculateAreaContribution(region, unit.imageDataUrl, origin, scale, rotation, targetAspect).then((next) => {
+      if (!cancelled) setValue(next)
+    })
+    return () => { cancelled = true }
+  }, [filled, origin, region, rotation, scale, targetAspect, unit.imageDataUrl])
 
   const norm = (event: React.PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -95,25 +163,15 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
   const down = (event: React.PointerEvent<HTMLDivElement>) => {
     if (confirmed) return
     if (regionDone) {
-      setDragOrigin(true)
-      setOrigin(norm(event))
-      setFilled(false)
-      return
+      setDragOrigin(true); setOrigin(norm(event)); setFilled(false); return
     }
-    if (mode === 'polygon') {
-      setRegion((old) => [...old, norm(event)])
-      return
-    }
-    setDrawing(true)
-    setRegion([norm(event)])
-    event.currentTarget.setPointerCapture(event.pointerId)
+    if (mode === 'polygon') { setRegion((old) => [...old, norm(event)]); return }
+    setDrawing(true); setRegion([norm(event)]); event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   const move = (event: React.PointerEvent<HTMLDivElement>) => {
     if (confirmed) return
-    if (dragOrigin && regionDone) {
-      setOrigin(norm(event)); setFilled(false); return
-    }
+    if (dragOrigin && regionDone) { setOrigin(norm(event)); setFilled(false); return }
     if (drawing && mode === 'freehand') {
       const next = norm(event)
       setRegion((old) => old.length === 0 || Math.hypot(next.x - old[old.length - 1].x, next.y - old[old.length - 1].y) > 0.01 ? [...old, next] : old)
@@ -122,17 +180,7 @@ export function AreaMeasurement({ locale, unit, target, onClose }: Props) {
 
   const up = () => { setDrawing(false); setDragOrigin(false) }
   const valid = region.length >= 3 && polygonArea(region) > 0.002
-  const unitArea = Math.max(0.000001, scale * (scale * unitMeta.aspect) * unitMeta.ratio)
-  const value = polygonArea(region) / unitArea
-
-  const cols = Math.ceil(1 / scale) + 4
-  const rows = Math.ceil(1 / Math.max(scale * unitMeta.aspect, 0.02)) + 4
-  const tiles = filled ? Array.from({ length: cols * rows }, (_, index) => {
-    const col = index % cols - 2
-    const row = Math.floor(index / cols) - 2
-    return { index, x: origin.x + col * scale, y: origin.y + row * scale * unitMeta.aspect }
-  }).filter((tile) => tile.x > -scale && tile.x < 1 + scale && tile.y > -scale && tile.y < 1 + scale) : []
-
+  const tiles = filled ? makeTiles(origin, scale, unitAspect, targetAspect, rotation) : []
   const polygonCss = region.map((p) => `${p.x * 100}% ${p.y * 100}%`).join(',')
 
   return <main className="editor-screen area-screen">
